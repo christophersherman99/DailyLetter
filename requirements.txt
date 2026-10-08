@@ -1,0 +1,5 @@
+yfinance>=1.0
+pandas
+matplotlib
+feedparser
+anthropic>=1.0

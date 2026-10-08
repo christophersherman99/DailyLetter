@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Daily Letter · Dashboard</title>
+<meta name="description" content="Live companion to an automated daily market letter: market regime, portfolio risk, a rebalancing simulator, and a DCF valuation playground.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="wrap masthead">
+  <div class="kicker" id="updated">Loading…</div>
+  <h1>The Daily Letter</h1>
+  <p class="dek">A live companion to my automated morning market letter. Market regime, portfolio risk,
+    and two interactive tools, rebuilt every weekday from the same code that writes the email.
+    All portfolio figures are percentages.</p>
+  <nav>
+    <a href="#today">Today</a><a href="#portfolio">Portfolio</a><a href="#simulator">Simulator</a><a href="#valuation">Valuation</a><a href="#history">History</a><a href="#letters">Letters</a><a href="#method">Method</a>
+  </nav>
+</header>
+
+<main class="wrap">
+  <section id="today">
+    <div class="label">Today</div>
+    <div class="grid two">
+      <div>
+        <h2 class="sub">Market weather</h2>
+        <div id="weather"></div>
+      </div>
+      <div>
+        <h2 class="sub">The take <span class="muted small" id="take-date"></span></h2>
+        <p class="take" id="take"></p>
+        <div id="watch"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="portfolio">
+    <div class="label">Portfolio at a glance</div>
+    <div class="tiles" id="tiles"></div>
+    <div class="grid two">
+      <div>
+        <h2 class="sub">Holdings</h2>
+        <table class="data" id="holdings"></table>
+      </div>
+      <div>
+        <h2 class="sub">True sector mix <span class="muted small">looking inside funds, vs the S&amp;P 500</span></h2>
+        <table class="data" id="sectors"></table>
+        <p class="note" id="regions"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="simulator">
+    <div class="label">Rebalancing simulator</div>
+    <p class="lede">Move weight between holdings and building blocks to see how the mix would have behaved
+      over the past year and through real selloffs. Mixes are rebalanced daily, so "Current" differs
+      slightly from the buy-and-hold stats above. A thinking tool, not a recommendation.</p>
+    <div class="presets" id="presets"></div>
+    <div class="grid sim">
+      <div>
+        <div class="total" id="total"></div>
+        <div id="sliders"></div>
+      </div>
+      <div>
+        <table class="data compare" id="compare"></table>
+        <div class="chart"><canvas id="sim-chart" aria-label="Growth of 100 over the past year"></canvas></div>
+        <p class="legend" id="sim-legend"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="valuation">
+    <div class="label">DCF playground</div>
+    <p class="lede">The same two-stage discounted cash flow model as the Monday Deep Dive. Change the
+      assumptions and watch the value, and the growth today's price implies, respond.</p>
+    <div class="grid sim">
+      <div>
+        <select id="dcf-ticker" aria-label="Company"></select>
+        <div id="dcf-sliders"></div>
+        <button class="ghost" id="dcf-reset">Reset to model defaults</button>
+      </div>
+      <div>
+        <div class="tiles three" id="dcf-tiles"></div>
+        <p class="take small" id="dcf-implied"></p>
+        <table class="data" id="dcf-table"></table>
+        <p class="note" id="dcf-note"></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="history">
+    <div class="label">History</div>
+    <h2 class="sub">Past year, indexed to 100 <span class="muted small">today's holdings, as if held throughout</span></h2>
+    <div class="chart tall"><canvas id="perf-chart" aria-label="Portfolio vs S&amp;P 500 vs Conservative"></canvas></div>
+    <p class="legend" id="perf-legend"></p>
+    <div class="grid two">
+      <div>
+        <h2 class="sub">Market regime score <span class="muted small">0 calm to 14 stressed</span></h2>
+        <div class="chart"><canvas id="regime-chart"></canvas></div>
+      </div>
+      <div>
+        <h2 class="sub">AI and big-tech exposure</h2>
+        <div class="chart"><canvas id="ai-chart"></canvas></div>
+      </div>
+    </div>
+    <h2 class="sub">Deep Dive valuations</h2>
+    <table class="data" id="valuations"></table>
+  </section>
+
+  <section id="letters">
+    <div class="label">Letter archive</div>
+    <div id="archive"></div>
+  </section>
+
+  <section id="method">
+    <div class="label">Method &amp; privacy</div>
+    <ul class="method">
+      <li><b>Pipeline.</b> A Python job on GitHub Actions runs every weekday morning: it pulls prices,
+        fundamentals and news, computes analytics, asks Claude for the written sections, emails the letter,
+        commits the day's data, and rebuilds this page.</li>
+      <li><b>Market weather.</b> Seven rules (trend vs the 200-day average, VIX and its term structure,
+        breadth, chip-stock momentum, credit spreads, the yield curve, safe-haven demand) score 0, 1 or 2;
+        the total sets Calm, Mixed or Stressed.</li>
+      <li><b>Risk.</b> Beta, volatility, historical value at risk (5th percentile day), drawdowns and Sharpe
+        from a year of daily returns. Fund look-through uses each fund's top ten holdings, so company and
+        AI exposure are floors.</li>
+      <li><b>Stress tests.</b> Each holding's actual return through four past selloffs, applied to today's
+        weights. Funds that did not exist yet use a close stand-in.</li>
+      <li><b>Valuation.</b> Ten-year two-stage unlevered free cash flow DCF: analyst growth for two years
+        fading to 2.5%, FCF margin at its 3-year median, CAPM-based WACC, Gordon growth terminal value.
+        Banks are skipped on purpose.</li>
+      <li><b>Privacy.</b> No dollar amounts are published: the portfolio is an index, holdings are weights,
+        and share counts live in an encrypted repository secret.</li>
+      <li><b>Not investment advice.</b> Data from Yahoo Finance and Google News, may be delayed.</li>
+    </ul>
+    <p class="note"><a href="https://github.com/christophersherman99/DailyLetter">Source code on GitHub</a></p>
+  </section>
+</main>
+
+<footer class="wrap"><span id="footer"></span></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

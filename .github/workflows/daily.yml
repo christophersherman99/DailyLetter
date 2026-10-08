@@ -1,0 +1,80 @@
+name: Daily Letter
+
+on:
+  schedule:
+    # 11:00 UTC = 7:00am New York in summer, 6:00am in winter (GitHub often runs a bit late)
+    - cron: "0 11 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      deep_dive:
+        description: "Add a Deep Dive today: 1 for the next stock in rotation, or a ticker like AAPL"
+        required: false
+        default: ""
+
+concurrency:
+  group: daily-letter
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # saves each day's data back to the repo
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Load holdings from the encrypted secret
+        run: printf '%s\n' "$PORTFOLIO_CSV" > portfolio.csv
+        env:
+          PORTFOLIO_CSV: ${{ secrets.PORTFOLIO_CSV }}
+      - run: python daily_letter.py
+        env:
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          DEEP_DIVE: ${{ inputs.deep_dive }}
+      - name: Save today's data
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "Daily data for $(date -u +%F)"
+          git pull --rebase
+          git push
+
+  dashboard:
+    needs: send
+    if: always()  # rebuild the dashboard even if the email step failed
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main  # includes the data commit from the send job
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Load holdings from the encrypted secret
+        run: printf '%s\n' "$PORTFOLIO_CSV" > portfolio.csv
+        env:
+          PORTFOLIO_CSV: ${{ secrets.PORTFOLIO_CSV }}
+      - run: python build_site.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+      - id: deploy
+        uses: actions/deploy-pages@v4

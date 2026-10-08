@@ -1,0 +1,15 @@
+# Local preview output (DRY_RUN=1)
+preview.html
+perf.png
+sectors.png
+brief.txt
+__pycache__/
+
+# Local tooling
+.claude/
+
+# Private: share counts and costs live in the PORTFOLIO_CSV repository secret
+portfolio.csv
+
+# Built by CI for GitHub Pages
+site/data.json
