@@ -168,6 +168,7 @@ def main():
         "performance": performance,
         "dcf": dcf_inputs,
         "daily": csv("portfolio"), "shadows": csv("shadows"), "valuations": csv("valuations"),
+        "catalysts": list(reversed(csv("catalysts"))),
         "letters": list(reversed(history.load_letters())),
     }
     os.makedirs(SITE, exist_ok=True)

@@ -27,6 +27,7 @@ fetch("data.json").then((r) => r.json()).then((data) => {
   initSimulator();
   initDCF();
   renderHistory();
+  renderCatalysts();
   renderLetters();
   applyDeepLink();
 }).catch((e) => { $("updated").textContent = "Could not load data: " + e; });
@@ -331,6 +332,26 @@ function renderHistory() {
     vals.map((v) => `<tr><td>${fmtDate(v.date)}</td><td><b>${esc(v.ticker)}</b></td><td>$${v.price.toFixed(2)}</td>
       <td>$${v.model_value.toFixed(0)} ${signed(v.upside_pct, 0)}</td><td>${v.implied_growth_pct == null ? "–" : v.implied_growth_pct.toFixed(1) + "% a year"}</td>
       <td>${v.growth_y1_pct.toFixed(1)}%</td></tr>`).join("") : "<tr><td>No Deep Dives yet.</td></tr>";
+}
+
+// ---------- catalysts ----------
+function renderCatalysts() {
+  const rows = D.catalysts || [];
+  if (!rows.length) { $("cat-table").innerHTML = "<tr><td>No catalysts logged yet.</td></tr>"; return; }
+  const types = ["All", ...new Set(rows.map((r) => r.type).filter(Boolean))];
+  const sources = { holding: "Holding", watchlist: "Watchlist", mover: "Mover", market: "Market" };
+  $("cat-filters").innerHTML = types.map((t) => `<button data-t="${esc(t)}">${esc(t)}</button>`).join("");
+  const draw = (type) => {
+    document.querySelectorAll("#cat-filters button").forEach((b) => b.classList.toggle("on", b.dataset.t === type));
+    const shown = rows.filter((r) => type === "All" || r.type === type).slice(0, 60);
+    $("cat-table").innerHTML = `<tr><th>Date</th><th>Type</th><th>Company</th><th>Headline</th><th>Move</th></tr>` +
+      shown.map((r) => `<tr><td>${fmtDate(r.date)}</td><td><span class="tag">${esc(r.type || "News")}</span></td>
+        <td><b>${esc(r.ticker || "–")}</b><br><span class="small muted">${sources[r.source] || ""}</span></td>
+        <td class="name">${/^https?:\/\//.test(r.link || "") ? `<a href="${esc(r.link)}" rel="noopener">${esc(r.headline)}</a>` : esc(r.headline)}</td>
+        <td>${r.day_pct == null ? "" : signed(r.day_pct)}</td></tr>`).join("");
+  };
+  $("cat-filters").addEventListener("click", (e) => e.target.dataset.t && draw(e.target.dataset.t));
+  draw("All");
 }
 
 // ---------- letters ----------

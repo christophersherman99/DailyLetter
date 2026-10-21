@@ -47,6 +47,9 @@ table.data th:first-child, table.data td:first-child { text-align: left; padding
 table.data td { padding: 7px 0 7px 10px; border-bottom: 1px solid var(--hair); text-align: right; }
 table.data td.name { white-space: normal; }
 .up { color: var(--up); } .down { color: var(--down); }
+.tag { font-size: 9.5px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--accent);
+  border: 1px solid var(--accent); border-radius: 3px; padding: 0 4px; white-space: nowrap; }
+#cat-table td.name { text-align: left; } #cat-table th:nth-child(4) { text-align: left; }
 .bar { display: inline-block; height: 6px; border-radius: 2px; background: var(--accent);
   opacity: .5; vertical-align: middle; margin-right: 6px; }
 

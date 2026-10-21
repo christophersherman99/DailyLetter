@@ -23,12 +23,14 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import yfinance as yf
 
+import catalysts
 import dcf
 import history
 import regime
 import risk
 import shadow
 import stress
+from newsfeed import ticker_news
 
 logging.getLogger("yfinance").setLevel(logging.CRITICAL)  # funds have no earnings; keep quiet
 
@@ -162,19 +164,9 @@ def screen_movers():
 
 
 def ticker_headline(ticker, name="", max_age_days=3):
-    """A recent Yahoo Finance headline for a ticker, preferring ones that name the company."""
+    """A recent headline for a ticker, preferring ones that name the company."""
     keys = {ticker.lower()} | ({name.split()[0].strip(",.").lower()} if name else set())
-    recent = []
-    try:
-        for item in yf.Ticker(ticker).news[:10]:
-            c = item["content"]
-            published = datetime.fromisoformat(c["pubDate"].replace("Z", "+00:00"))
-            if datetime.now(timezone.utc) - published > timedelta(days=max_age_days):
-                continue
-            link = (c.get("canonicalUrl") or c.get("clickThroughUrl") or {}).get("url", "")
-            recent.append((c["title"], link))
-    except Exception:
-        return None
+    recent = [(t, link) for t, link, _ in ticker_news(ticker, timedelta(days=max_age_days))]
     named = [h for h in recent if any(k in h[0].lower() for k in keys)]
     return (named or recent or [None])[0]
 
@@ -307,7 +299,9 @@ not a verdict. Otherwise an empty string.
 
 You also get a rules-based market regime, stress tests, 5-day changes, the portfolio's \
 risk stats, and your previous letters. Mention the regime only when it changed, a signal \
-just flipped, or it explains the day. The shadow portfolio is the reader's own benchmark: \
+just flipped, or it explains the day. The catalyst radar tags event headlines (FDA, trials, deals, guidance, and so on); bring one \
+up only when it touches the reader's holdings or watchlist, or is a major market event. \
+The shadow portfolio is the reader's own benchmark: \
 you may note a meaningful gap with the real portfolio, but never suggest switching to it \
 or making any trade. Use them \
 to add continuity: note a theme that has carried over several days, or a meaningful shift \
@@ -354,7 +348,7 @@ def ai_take(brief):
 def build_brief(port, world, futures, macro, sectors, movers, mover_news,
                 holding_news, news, events, risk=None, exposure=None, corr=None,
                 past_letters=(), past_days=(), valuation=None, weather=None,
-                stress_tests=None, shadows=()):
+                stress_tests=None, shadows=(), extras=None):
     """Everything the AI sees, as compact plain text."""
     # Percentages only: the AI's text is saved to the public record
     start_value = port["value"] - port["day_usd"]
@@ -437,6 +431,18 @@ def build_brief(port, world, futures, macro, sectors, movers, mover_news,
             L.append(f"  AI and big-tech exposure: {sh['ai']['pct']:.0f}%")
     if valuation:
         L.append("\nDEEP DIVE (DCF model):\n" + dcf.report(valuation))
+    radar = (extras or {}).get("radar")
+    if radar:
+        L.append("\nCATALYST RADAR (tagged headlines; type in brackets):")
+        for w in radar["watchlist"]:
+            L.append(f"  Watchlist {w['ticker']}: "
+                     + (f"{w['day']:+.2f}%, " if w["day"] is not None else "")
+                     + (f"volume {w['volume']:.1f}x usual, " if w["volume"] else "")
+                     + (f"latest ({w['date']}): {w['title']}" if w["title"] else "no recent news"))
+        L += [f"  {i['ticker']} ({i['source']}) [{i['type'] or 'news'}]"
+              + (f" {i['day']:+.1f}%" if i["day"] is not None else "") + f": {i['title']}"
+              for i in radar["items"] if i["title"]]
+        L += [f"  Market [{m['type']}]: {m['title']}" for m in radar["market"]]
     if past_letters:
         L.append("\nYOUR PREVIOUS LETTERS (newest first):")
         L += [f"  {e['date']}: {e['take']}" for e in past_letters]
@@ -761,6 +767,55 @@ def deep_dive_html(v, note):
     return "".join(p)
 
 
+def tag(kind):
+    """A catalyst type as an outlined label (text, not color, carries the meaning)."""
+    return (f"<span style='font-family:{SANS};font-size:9px;font-weight:700;letter-spacing:.8px;"
+            f"text-transform:uppercase;color:{ACCENT};border:1px solid {ACCENT};border-radius:3px;"
+            f"padding:0 4px;vertical-align:middle;white-space:nowrap'>{escape(kind)}</span>")
+
+
+def radar_html(r):
+    p = [label("Catalyst Radar", link=dash(anchor="catalysts"))]
+    row = lambda left, right="": (
+        f"{TABLE}<tr><td style='font-family:{SANS};font-size:13.5px;color:{INK}'>{left}</td>"
+        f"<td style='text-align:right;white-space:nowrap'>{right}</td></tr></table>")
+    if r["watchlist"]:
+        p.append(caption("Your watchlist").replace("margin:18px 0 6px", "margin:0 0 6px"))
+        for w in r["watchlist"]:
+            vol = (f"<span style='color:{MUTED}'>{w['volume']:.1f}x usual volume</span>"
+                   if w["volume"] else "")
+            head = (f"{tag(w['type']) + ' ' if w['type'] else ''}{link(w['title'], w['link'], 14)}"
+                    f" <span style='font-family:{SANS};font-size:11px;color:{FAINT}'>{w['date']}</span>"
+                    if w["title"] else f"<span style='color:{FAINT}'>No news this week</span>")
+            p.append(f"<div style='padding:9px 0;border-bottom:1px solid {HAIR}'>"
+                     + row(f"<b>{w['ticker']}</b>&nbsp; <span style='color:{MUTED};font-size:12.5px'>"
+                           f"{escape(w['note'])}</span>",
+                           chip(f"{w['day']:+.1f}%", w["day"]) if w["day"] is not None else "")
+                     + f"<div style='margin-top:4px;font-family:{SANS};font-size:12.5px'>{vol}</div>"
+                     + f"<div style='margin-top:3px'>{head}</div></div>")
+    items = [i for i in r["items"] if i["title"]]
+    if items:
+        p.append(caption("Events at your holdings and mid-size companies on the move ($2-10B, 8%+)"))
+        for i in items:
+            who = "your holding" if i["source"] == "holding" else escape(i["name"])
+            p.append(f"<div style='padding:9px 0;border-bottom:1px solid {HAIR}'>"
+                     + row(f"{tag(i['type']) + '&nbsp; ' if i['type'] else ''}<b>{i['ticker']}</b>"
+                           f"&nbsp; <span style='color:{MUTED};font-size:12.5px'>{who}</span>",
+                           chip(f"{i['day']:+.1f}%", i["day"]) if i["day"] is not None else "")
+                     + (f"<div style='margin-top:4px'>{link(i['title'], i['link'], 14)}</div>"
+                        if i["link"] else
+                        f"<div style='margin-top:4px;font-size:13px;color:{MUTED}'>{escape(i['title'])}</div>")
+                     + "</div>")
+    if r["market"]:
+        p.append(caption("Across the market"))
+        p += [f"<div style='margin-bottom:8px'>{tag(m['type'])}&nbsp; {link(m['title'], m['link'], 14)}</div>"
+              for m in r["market"]]
+    if len(p) == 1:
+        p.append(f"<div style='font-family:{SERIF};font-size:15px;color:{MUTED}'>Quiet: no catalyst "
+                 "headlines today.</div>")
+    return "".join(p)
+
+
 def _three_month(series, like):
     """Return over the same window as `like` (the 3-month portfolio history), in percent."""
     s = series.reindex(like.index).ffill().dropna()
@@ -808,7 +863,8 @@ def shadow_html(sh, you_risk, you_stress):
 
 def build_html(port, world, futures, macro, movers, mover_news, holding_news, news,
                events, ai, risk=None, exposure=None, corr=None, valuation=None,
-               weather=None, stress_tests=None, shadows=None):
+               weather=None, stress_tests=None, shadows=None, extras=None):
+    extras = extras or {}
     now = datetime.now(ET)
     spx = world["US"]["S&P 500"]
     p = []
@@ -942,6 +998,9 @@ def build_html(port, world, futures, macro, movers, mover_news, holding_news, ne
                      + (f"<div style='margin-top:4px'>{link(*head, size=14)}</div>" if head else "")
                      + "</div>")
 
+    if extras.get("radar"):
+        p.append(radar_html(extras["radar"]))
+
     # Rates, FX, commodities
     p.append(label("Rates, FX &amp; Commodities"))
     p.append(TABLE)
@@ -1030,7 +1089,7 @@ def main():
     data = download([h["ticker"] for h in holdings if h["ticker"] not in CASH]
                     + world_tickers + list(FUTURES.values()) + list(MACRO.values())
                     + list(SECTORS.values()) + [RISK_FREE] + list(regime.TICKERS.values())
-                    + shadow.tickers())
+                    + shadow.tickers() + list(catalysts.load_watchlist()))
 
     def pick(names):
         return {n: stats(data[t], t) for n, t in names.items() if t in data}
@@ -1089,15 +1148,25 @@ def main():
         except Exception as e:
             print("Deep dive skipped:", e)
 
+    # Newer sections travel together in `extras`
+    extras = {}
+    held = [r["ticker"] for r in port["rows"] if not r["cash"]]
+    try:
+        moves = {t: stats(data[t])["day"] for t in set(held) | set(catalysts.load_watchlist())
+                 if t in data}
+        extras["radar"] = catalysts.scan(held, moves, exposure and exposure["names"])
+    except Exception as e:
+        print("Catalyst radar skipped:", e)
+
     day = str(world["US"]["S&P 500"]["date"])  # the US session this letter covers
     brief = build_brief(port, world, futures, macro, sectors, movers, mover_news,
                         holding_news, news, events, risk_stats, exposure, corr,
                         history.recent_letters(day), history.recent_portfolio(day), valuation,
-                        weather, stress_tests, shadows)
+                        weather, stress_tests, shadows, extras)
     ai = ai_take(brief)
     html = build_html(port, world, futures, macro, movers, mover_news, holding_news,
                       news, events, ai, risk_stats, exposure, corr, valuation,
-                      weather, stress_tests, shadows)
+                      weather, stress_tests, shadows, extras)
     text = build_text(port, ai)
     images = {"perf": perf_chart(port, data["^GSPC"], shadows), "sectors": sector_chart(sectors)}
     subject = (f"Daily Letter | {datetime.now(ET):%b %d} | Portfolio {port['day']:+.2f}%, "
@@ -1128,6 +1197,8 @@ def main():
         if valuation:
             history.save_valuation(day, valuation)
         history.save_shadows(day, shadows)
+        if extras.get("radar"):
+            history.save_catalysts(day, extras["radar"])
         print("Saved history for", day)
 
 

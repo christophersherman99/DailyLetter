@@ -117,6 +117,23 @@ def save_shadows(day, shadows):
     _upsert("shadows", rows, day)
 
 
+def save_catalysts(day, radar):
+    """Log each day's tagged catalysts so the dashboard can show a searchable history."""
+    rows = [{"date": day, "ticker": i["ticker"], "source": i["source"], "type": i["type"] or "",
+             "day_pct": round(i["day"], 2) if i["day"] is not None else None,
+             "headline": i["title"], "link": i["link"]}
+            for i in radar["items"] if i["title"] and i["type"]]
+    rows += [{"date": day, "ticker": w["ticker"], "source": "watchlist", "type": w["type"] or "",
+              "day_pct": round(w["day"], 2) if w["day"] is not None else None,
+              "headline": w["title"], "link": w["link"]}
+             for w in radar["watchlist"] if w["title"]]
+    rows += [{"date": day, "ticker": "", "source": "market", "type": m["type"], "day_pct": None,
+              "headline": m["title"], "link": m["link"]} for m in radar["market"]]
+    if rows:
+        os.makedirs(DATA, exist_ok=True)
+        _upsert("catalysts", rows, day)
+
+
 def last_valued():
     """{ticker: date of its most recent deep dive}."""
     path = os.path.join(DATA, "valuations.csv")
