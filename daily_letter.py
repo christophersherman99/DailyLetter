@@ -84,9 +84,12 @@ SANS = "-apple-system,BlinkMacSystemFont,Segoe UI,Helvetica,Arial,sans-serif"
 
 # ---------- data ----------
 def load_portfolio():
-    with open(os.path.join(HERE, "portfolio.csv"), newline="") as f:
-        return [{"ticker": r["ticker"].strip().upper(), "shares": float(r["shares"]),
-                 "avg_cost": float(r["avg_cost"])} for r in csv.DictReader(f)]
+    # utf-8-sig drops a byte-order mark some editors and shells add to the start of the file
+    with open(os.path.join(HERE, "portfolio.csv"), newline="", encoding="utf-8-sig") as f:
+        rows = [{k.strip().lower(): (v or "").strip() for k, v in r.items() if k}
+                for r in csv.DictReader(f)]
+    return [{"ticker": r["ticker"].upper(), "shares": float(r["shares"]),
+             "avg_cost": float(r["avg_cost"])} for r in rows if r.get("ticker")]
 
 
 def _download(tickers):
