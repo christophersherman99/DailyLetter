@@ -25,6 +25,7 @@ fetch("data.json").then((r) => r.json()).then((data) => {
   renderToday();
   renderPortfolio();
   renderFactors();
+  initCompany();
   initSimulator();
   initDCF();
   renderHistory();
@@ -34,13 +35,16 @@ fetch("data.json").then((r) => r.json()).then((data) => {
 }).catch((e) => { $("updated").textContent = "Could not load data: " + e; });
 
 // Links from the email open the dashboard at the matching spot:
-//   ?dcf=AAPL#valuation, ?preset=Conservative#simulator, ?letter=2026-10-21#letters
+//   ?dcf=AAPL#valuation, ?preset=Conservative#simulator, ?letter=2026-10-21#letters,
+//   ?company=DXCM#company
 function applyDeepLink() {
   const q = new URLSearchParams(location.search);
   let target = location.hash ? document.querySelector(location.hash) : null;
   const dcf = (q.get("dcf") || "").toUpperCase();
   const i = D.dcf.findIndex((d) => d.ticker === dcf);
   if (i >= 0) { $("dcf-ticker").value = i; loadDCF(i); }
+  const co = (q.get("company") || "").toUpperCase();
+  if (co && D.prices?.[co]) { $("co-ticker").value = co; showCompany(co); }
   const preset = q.get("preset");
   if (preset && D.presets[preset]) { setMix(D.presets[preset]); markPreset(preset); syncSliders(); updateSim(); }
   const day = q.get("letter");
@@ -91,7 +95,8 @@ function renderPortfolio() {
   ].join("");
   const max = Math.max(...D.weights.map((w) => w.weight));
   $("holdings").innerHTML = `<tr><th>Holding</th><th>Weight</th><th>Day</th><th>Since bought</th></tr>` +
-    D.weights.map((w) => `<tr><td><b>${w.cash ? "Cash" : esc(w.ticker)}</b></td>
+    D.weights.map((w) => `<tr><td>${w.cash ? "<b>Cash</b>" : D.prices?.[w.ticker]
+      ? `<a href="?company=${encodeURIComponent(w.ticker)}#company" data-co="${esc(w.ticker)}"><b>${esc(w.ticker)}</b></a>` : `<b>${esc(w.ticker)}</b>`}</td>
       <td><span class="bar" style="width:${(w.weight / max) * 60}px"></span>${w.weight < 1 ? "&lt;1" : w.weight.toFixed(0)}%</td>
       <td>${w.cash ? "" : signed(w.day_pct, 2)}</td><td>${w.cash ? "" : signed(w.gain_pct)}</td></tr>`).join("");
   const e = D.exposure;
@@ -102,6 +107,98 @@ function renderPortfolio() {
   $("regions").innerHTML = "Regions: " + Object.entries(e.regions).filter(([, v]) => v >= 0.5)
     .map(([k, v]) => `${esc(k)} ${v.toFixed(0)}%`).join(" · ") +
     "<br>Biggest companies counting fund holdings: " + e.top.map((c) => `${esc(c.name)} ${c.pct.toFixed(1)}%`).join(" · ");
+}
+
+// ---------- company pages ----------
+let coPrice, coWeight;
+
+function initCompany() {
+  const tickers = Object.keys(D.prices || {});
+  if (!tickers.length) { $("company").style.display = "none"; return; }
+  $("co-ticker").innerHTML = tickers.map((t) => `<option value="${esc(t)}">${esc(D.names[t] || t)} (${esc(t)})</option>`).join("");
+  $("co-ticker").addEventListener("change", () => showCompany($("co-ticker").value));
+  coPrice = new Chart($("co-price"), lineConfig((v) => "$" + v.toFixed(0)));
+  coWeight = new Chart($("co-weight"), lineConfig((v) => v.toFixed(1) + "%"));
+  // Holding names in the portfolio table open their company page
+  $("holdings").addEventListener("click", (e) => {
+    const t = e.target.closest("[data-co]")?.dataset.co;
+    if (t) { e.preventDefault(); openCompany(t); }
+  });
+  showCompany(tickers[0]);
+}
+
+function openCompany(t) {
+  if (!D.prices[t]) return;
+  $("co-ticker").value = t;
+  showCompany(t);
+  $("company").scrollIntoView({ behavior: "smooth" });
+}
+
+function showCompany(t) {
+  const w = D.weights.find((x) => x.ticker === t) || {};
+  const name = D.names[t] || t;
+  $("co-head").innerHTML = `<div class="tiles" style="margin:8px 0 4px">
+    ${tile("Weight", (w.weight ?? 0).toFixed(1) + "%", "of the portfolio")}
+    ${tile("Today", signed(w.day_pct, 2), esc(t))}
+    ${tile("Since bought", signed(w.gain_pct), "your average cost")}
+    ${tile("AI exposure", ((D.blocks.find((b) => b.ticker === t)?.ai ?? 0) * 100).toFixed(0) + "%", "of this holding")}</div>`;
+
+  const p = D.prices[t];
+  coPrice.data.labels = p.dates;
+  coPrice.data.datasets = [ds(name, p.values, C.accent, 1.8)];
+  coPrice.update();
+  const hist = D.holdings_history.filter((h) => h.ticker === t);
+  coWeight.data.labels = hist.map((h) => h.date);
+  coWeight.data.datasets = [{ ...ds("Weight", hist.map((h) => h.weight), C.shadow, 2), pointRadius: 2.5 }];
+  coWeight.options.scales.x.ticks.callback = function (v) { const d = this.getLabelForValue(v); return d ? new Date(d + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" }) : ""; };
+  coWeight.update();
+
+  const f = D.factors?.holdings?.[t];
+  $("co-factors").innerHTML = f ? `<tr><th>Factor</th><th>Loading</th><th>Reads as</th></tr>` +
+    D.factors.factors.map((k) => {
+      const v = f[k], strong = k === "Market" ? Math.abs(v - 1) >= 0.2 : Math.abs(v) >= 0.2;
+      const read = k === "Market" ? (v > 1.2 ? "swings more than the market" : v < 0.8 ? "steadier than the market" : "moves with the market")
+        : !strong ? "little tilt" : { Size: ["small-company behavior", "large-company behavior"], Value: ["value-like", "growth-like"],
+          Momentum: ["moves with recent winners", "moves against recent winners"], International: ["trades partly like foreign stocks", "trades like US stocks"] }[k][v > 0 ? 0 : 1];
+      return `<tr><td>${k}</td><td>${v.toFixed(2)}</td><td class="small muted">${read}</td></tr>`;
+    }).join("") : `<tr><td class="muted">Not enough history.</td></tr>`;
+
+  const er = (D.earnings || []).filter((e) => e.ticker === t && e.kind === "result");
+  const uniq = Object.values(Object.fromEntries(er.map((e) => [e.report_date, e])));
+  const next = (D.earnings || []).filter((e) => e.ticker === t && e.kind === "preview").pop();
+  $("co-earnings").innerHTML = (uniq.length || next) ? `<tr><th>Report</th><th>EPS vs est.</th><th>Stock</th></tr>` +
+    (next ? `<tr><td>${fmtDate(next.report_date)} <span class="tag">Next</span></td><td>est. $${next.eps_est?.toFixed(2) ?? "–"}</td>
+      <td class="small muted">${next.implied_pct != null ? "options ±" + next.implied_pct.toFixed(1) + "%" : ""}</td></tr>` : "") +
+    uniq.reverse().map((e) => `<tr><td>${fmtDate(e.report_date)}</td><td>$${e.eps.toFixed(2)} vs $${e.eps_est?.toFixed(2) ?? "–"}
+      ${e.surprise_pct != null ? `<span class="small muted">(${e.surprise_pct >= 0 ? "beat" : "miss"})</span>` : ""}</td>
+      <td>${signed(e.reaction_pct)}</td></tr>`).join("") : `<tr><td class="muted">No reports tracked yet.</td></tr>`;
+
+  const vals = D.valuations.filter((v) => v.ticker === t).reverse();
+  const modeled = D.dcf.some((d) => d.ticker === t);
+  $("co-valuation").innerHTML = (vals.length ? `<table class="data"><tr><th>Date</th><th>DCF value</th><th>Price implies</th></tr>` +
+    vals.map((v) => `<tr><td>${fmtDate(v.date)}</td><td>$${v.model_value.toFixed(0)} ${signed(v.upside_pct, 0)}</td>
+      <td>${v.implied_growth_pct == null ? "–" : v.implied_growth_pct.toFixed(1) + "% a year"}</td></tr>`).join("") + "</table>"
+    : `<p class="note">No Deep Dive yet${modeled ? "; the playground has a live model." : "."}</p>`) +
+    (modeled ? `<button class="ghost" id="co-dcf">Open in the DCF playground</button>` : "");
+  $("co-dcf")?.addEventListener("click", () => {
+    const i = D.dcf.findIndex((d) => d.ticker === t);
+    $("dcf-ticker").value = i; loadDCF(i); $("valuation").scrollIntoView({ behavior: "smooth" });
+  });
+
+  const cats = (D.catalysts || []).filter((c) => c.ticker === t).slice(0, 8);
+  $("co-catalysts").innerHTML = cats.length ? cats.map((c) => `<div style="margin-bottom:8px;font-size:14px">
+    <span class="tag">${esc(c.type || "News")}</span> <span class="small muted">${fmtDate(c.date)}</span><br>
+    ${/^https?:\/\//.test(c.link || "") ? `<a href="${esc(c.link)}" rel="noopener">${esc(c.headline)}</a>` : esc(c.headline)}</div>`).join("")
+    : `<p class="note">No catalyst headlines logged yet.</p>`;
+
+  const word = (name.match(/[A-Za-z]+/) || [t])[0];
+  const rx = new RegExp(`\\b(${t}|${word})\\b`, "i");
+  const mentions = D.letters.filter((l) => rx.test([l.take, l.portfolio, l.deep_dive, ...(l.watch || [])].join(" "))).slice(0, 6);
+  $("co-letters").innerHTML = mentions.length ? mentions.map((l) => {
+    const text = [l.take, l.portfolio, l.deep_dive].filter(Boolean).join(" ");
+    const s = text.split(/(?<=[.!?])\s+/).find((x) => rx.test(x)) || firstSentence(text);
+    return `<p class="take small" style="margin-bottom:8px"><span class="small muted">${fmtDate(l.date)}</span><br>${esc(s)}</p>`;
+  }).join("") : `<p class="note">Not mentioned in a letter yet.</p>`;
 }
 
 // ---------- factors ----------
@@ -169,7 +266,67 @@ function mixStats(weights) {
   };
 }
 
-let mix = {}, simChart;
+let mix = {}, simChart, mcChart;
+
+// ---------- range of outcomes (Monte Carlo) ----------
+function seeded(seed) { // mulberry32: same seed, same paths, so numbers don't jitter between redraws
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function monthlyMix(weights) {
+  const total = Object.values(weights).reduce((s, x) => s + x, 0);
+  const blocks = D.blocks.filter((b) => weights[b.ticker] > 0 && b.monthly);
+  return D.months.map((_, m) => blocks.reduce((s, b) => s + (weights[b.ticker] / total) * (b.monthly[m] ?? 0), 0));
+}
+
+function monteCarlo(series, years = 10, paths = 2000, block = 3) {
+  const rand = seeded(20261021), n = series.length, perYear = Array.from({ length: years + 1 }, () => []);
+  for (let p = 0; p < paths; p++) {
+    let level = 1, m = 0;
+    perYear[0].push(1);
+    while (m < years * 12) {
+      const start = Math.floor(rand() * (n - block + 1));
+      for (let k = 0; k < block && m < years * 12; k++) {
+        level *= 1 + series[start + k];
+        m++;
+        if (m % 12 === 0) perYear[m / 12].push(level);
+      }
+    }
+  }
+  return perYear.map((v) => ({ p10: (quantile(v, 0.1) - 1) * 100, p50: (quantile(v, 0.5) - 1) * 100, p90: (quantile(v, 0.9) - 1) * 100 }));
+}
+
+function updateOutcomes(currentWeights) {
+  if (!D.months || !Object.values(mix).some((x) => x > 0)) return;
+  const cur = monteCarlo(monthlyMix(currentWeights)), m = monteCarlo(monthlyMix(mix));
+  const cell = (x) => `${signed(x.p50, 0)}<br><span class="small muted">${pct(x.p10, 0)} to ${pct(x.p90, 0)}</span>`;
+  $("mc-table").innerHTML = `<tr><th>Horizon</th><th>Current</th><th class="mix">Your mix</th></tr>` +
+    [1, 5, 10].map((y) => `<tr><td>${y} year${y > 1 ? "s" : ""}</td><td>${cell(cur[y])}</td><td class="mix">${cell(m[y])}</td></tr>`).join("") +
+    `<tr><td colspan="3" class="small muted" style="text-align:left">Middle outcome, with the 10th to 90th percentile range below it.</td></tr>`;
+  if (!mcChart) {
+    mcChart = new Chart($("mc-chart"), lineConfig((v) => (v >= 0 ? "+" : "") + v.toFixed(0) + "%"));
+    mcChart.options.scales.x.ticks.callback = function (v) { return this.getLabelForValue(v); };
+    mcChart.options.plugins.tooltip.callbacks.title = (it) => it[0].label;
+    mcChart.options.plugins.tooltip.filter = (it) => !it.dataset.label.startsWith("_");
+  }
+  const band = (series, color, label) => [
+    { label: "_" + label + " low", data: series.map((x) => x.p10), borderWidth: 0, pointRadius: 0, fill: false },
+    { label: "_" + label + " high", data: series.map((x) => x.p90), borderWidth: 0, pointRadius: 0,
+      backgroundColor: color + "26", fill: "-1" },
+  ];
+  mcChart.data.labels = cur.map((_, y) => (y === 0 ? "Now" : `Year ${y}`));
+  mcChart.data.datasets = [
+    ...band(cur, C.accent, "Current"), ds("Current, middle outcome", cur.map((x) => x.p50), C.accent, 2),
+    ...band(m, C.shadow, "Mix"), ds("Your mix, middle outcome", m.map((x) => x.p50), C.shadow, 2, [5, 3]),
+  ];
+  mcChart.update("none");
+  $("mc-legend").innerHTML = legend([["Current", C.accent], ["Your mix", C.shadow, true]]) + " &nbsp; shaded: 10th to 90th percentile";
+}
 
 function initSimulator() {
   const current = D.presets.Current;
@@ -235,6 +392,8 @@ function updateSim() {
   ];
   simChart.update("none");
   $("sim-legend").innerHTML = legend([["Current", C.accent], ["Your mix", C.shadow, true], ["S&P 500", C.spx]]);
+  clearTimeout(updateSim.t); // the simulation is heavier: run it once the slider settles
+  updateSim.t = setTimeout(() => updateOutcomes(Object.fromEntries(Object.entries(D.presets.Current).map(([t, w]) => [t, w * 100]))), 150);
 }
 
 // ---------- charts ----------

@@ -15,7 +15,7 @@
     and two interactive tools, rebuilt every weekday from the same code that writes the email.
     All portfolio figures are percentages.</p>
   <nav>
-    <a href="#today">Today</a><a href="#portfolio">Portfolio</a><a href="#factors">Factors</a><a href="#simulator">Simulator</a><a href="#valuation">Valuation</a><a href="#history">History</a><a href="#catalysts">Catalysts</a><a href="#letters">Letters</a><a href="#method">Method</a>
+    <a href="#today">Today</a><a href="#portfolio">Portfolio</a><a href="#company">Companies</a><a href="#factors">Factors</a><a href="#simulator">Simulator</a><a href="#valuation">Valuation</a><a href="#history">History</a><a href="#catalysts">Catalysts</a><a href="#letters">Letters</a><a href="#method">Method</a>
   </nav>
 </header>
 
@@ -49,6 +49,38 @@
         <p class="note" id="regions"></p>
       </div>
     </div>
+  </section>
+
+  <section id="company">
+    <div class="label">Company pages</div>
+    <select id="co-ticker" aria-label="Company"></select>
+    <div id="co-head"></div>
+    <div class="grid two">
+      <div>
+        <h2 class="sub">Past year</h2>
+        <div class="chart"><canvas id="co-price" aria-label="Share price, past year"></canvas></div>
+      </div>
+      <div>
+        <h2 class="sub">Your weight over time</h2>
+        <div class="chart"><canvas id="co-weight" aria-label="Portfolio weight over time"></canvas></div>
+      </div>
+    </div>
+    <div class="grid two">
+      <div>
+        <h2 class="sub">Factor fingerprint</h2>
+        <table class="data" id="co-factors"></table>
+        <h2 class="sub">Earnings</h2>
+        <table class="data" id="co-earnings"></table>
+      </div>
+      <div>
+        <h2 class="sub">Valuation</h2>
+        <div id="co-valuation"></div>
+        <h2 class="sub">Catalysts</h2>
+        <div id="co-catalysts"></div>
+      </div>
+    </div>
+    <h2 class="sub">In the letters</h2>
+    <div id="co-letters"></div>
   </section>
 
   <section id="factors">
@@ -88,6 +120,17 @@
         <table class="data compare" id="compare"></table>
         <div class="chart"><canvas id="sim-chart" aria-label="Growth of 100 over the past year"></canvas></div>
         <p class="legend" id="sim-legend"></p>
+      </div>
+    </div>
+    <h2 class="sub">Range of outcomes <span class="muted small">2,000 simulated paths per mix</span></h2>
+    <p class="lede">Each path replays the mix's real monthly returns since 2020 in a random order, three
+      months at a time. The band covers the middle 80% of paths. 2020 to 2026 was a strong stretch for
+      stocks, so treat these ranges as optimistic.</p>
+    <div class="grid sim">
+      <table class="data compare" id="mc-table"></table>
+      <div>
+        <div class="chart"><canvas id="mc-chart" aria-label="Range of outcomes over 10 years"></canvas></div>
+        <p class="legend" id="mc-legend"></p>
       </div>
     </div>
   </section>

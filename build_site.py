@@ -48,13 +48,32 @@ def ai_share(ticker, info):
         return 0.0
 
 
-def replay_returns(tickers):
-    """{ticker: {scenario: return}} over each historical window, using PROXIES if needed."""
+def long_history(tickers):
+    """Daily closes since stress.HISTORY_START for tickers, their proxies, and the S&P 500."""
     want = sorted(set(tickers) | {stress.PROXIES[t] for t in tickers if t in stress.PROXIES}
                   | {"^GSPC"})
     df = yf.download(want, start=stress.HISTORY_START, auto_adjust=True, group_by="ticker",
                      progress=False, threads=True)
-    closes = {t: df[t]["Close"].dropna() for t in want if t in df.columns.levels[0]}
+    return {t: df[t]["Close"].dropna() for t in want if t in df.columns.levels[0]}
+
+
+def monthly_returns(tickers, closes):
+    """Month-end returns on the S&P 500's calendar; months before a fund existed use its
+    proxy (e.g. BIL for SGOV), else the S&P 500."""
+    spx = closes["^GSPC"].resample("ME").last().pct_change().dropna()
+    out = {}
+    for t in tickers:
+        s = closes.get(t)
+        r = (s.resample("ME").last().pct_change() if s is not None else pd.Series(dtype=float))
+        proxy = closes.get(stress.PROXIES.get(t))
+        fill = proxy.resample("ME").last().pct_change() if proxy is not None else spx
+        out[t] = [_r(v, 5) for v in r.reindex(spx.index).fillna(fill.reindex(spx.index)).fillna(spx)]
+    return {"months": [d.strftime("%Y-%m") for d in spx.index], "returns": out,
+            "spx": [_r(v, 5) for v in spx]}
+
+
+def replay_returns(tickers, closes):
+    """{ticker: {scenario: return}} over each historical window, using PROXIES if needed."""
     out = {}
     for t in list(tickers) + ["^GSPC"]:
         out[t] = {}
@@ -99,13 +118,16 @@ def main():
             infos[t] = yf.Ticker(t).info
         except Exception:
             infos[t] = {}
-    replays = replay_returns([t for t in universe if t in rets])
+    in_sim = [t for t in universe if t in rets]
+    closes_long = long_history(in_sim)
+    replays = replay_returns(in_sim, closes_long)
+    monthly = monthly_returns(in_sim, closes_long)
     blocks = [{
         "ticker": t, "name": EXTRAS.get(t) or infos[t].get("shortName") or t,
         "kind": "fund" if infos[t].get("quoteType") == "ETF" else "stock",
         "returns": [_r(v, 6) for v in rets[t].fillna(0)], "replays": replays.get(t, {}),
-        "ai": _r(ai_share(t, infos[t]), 4),
-    } for t in universe if t in rets]
+        "monthly": monthly["returns"][t], "ai": _r(ai_share(t, infos[t]), 4),
+    } for t in in_sim]
 
     current = {r["ticker"]: _r(r["weight"] / 100, 5) for r in port["rows"] if not r["cash"]}
     cash = sum(r["weight"] for r in port["rows"] if r["cash"]) / 100
@@ -174,12 +196,17 @@ def main():
         "ai_exposure": _r((stress.ai_exposure(exposure) or {}).get("pct"), 2),
         "spx_returns": [_r(v, 6) for v in spx_rets.fillna(0)],
         "spx_replays": replays.get("^GSPC", {}),
+        "months": monthly["months"], "spx_monthly": monthly["spx"],
         "scenarios": list(stress.REPLAYS),
         "blocks": blocks, "presets": presets,
         "performance": performance,
         "dcf": dcf_inputs,
         "daily": csv("portfolio"), "shadows": csv("shadows"), "valuations": csv("valuations"),
         "catalysts": list(reversed(csv("catalysts"))),
+        "earnings": csv("earnings"),
+        "holdings_history": csv("holdings"),
+        "names": {t: (infos.get(t) or {}).get("shortName") or t for t in held},
+        "prices": {t: _series(data[t].reindex(days).ffill().dropna()) for t in held if t in data},
         "letters": list(reversed(history.load_letters())),
         "weekly": list(reversed(load_weekly())),
     }
