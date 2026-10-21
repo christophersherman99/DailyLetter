@@ -1146,6 +1146,11 @@ def send(subject, html, text, images):
 
 
 def main():
+    # Saturdays (or EDITION=weekly) send the Weekly Wrap instead of a daily letter
+    if os.environ.get("EDITION") == "weekly" or (
+            not os.environ.get("EDITION") and datetime.now(ET).weekday() == 5):
+        import weekly
+        return weekly.main()
     holdings = load_portfolio()
     movers = screen_movers()
     world_tickers = [t for rows in WORLD.values() for t in rows.values()]

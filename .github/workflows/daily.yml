@@ -4,6 +4,8 @@ on:
   schedule:
     # 11:00 UTC = 7:00am New York in summer, 6:00am in winter (GitHub often runs a bit late)
     - cron: "0 11 * * 1-5"
+    # Saturday 13:00 UTC (9am New York in summer): the Weekly Wrap
+    - cron: "0 13 * * 6"
   push:  # dashboard changes redeploy the site without sending an email
     branches: [main]
     paths: ["site/**", "build_site.py"]
@@ -13,6 +15,11 @@ on:
         description: "Add a Deep Dive today: 1 for the next stock in rotation, or a ticker like AAPL"
         required: false
         default: ""
+      edition:
+        description: "Which edition to send"
+        type: choice
+        options: [auto, daily, weekly]
+        default: auto
 
 concurrency:
   group: daily-letter
@@ -41,6 +48,7 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           DEEP_DIVE: ${{ inputs.deep_dive }}
+          EDITION: ${{ inputs.edition != 'auto' && inputs.edition || '' }}
       - name: Save today's data
         run: |
           git config user.name "github-actions[bot]"
