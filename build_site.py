@@ -16,6 +16,7 @@ import yfinance as yf
 import backtest
 import daily_letter as dl
 import dcf
+import factors
 import history
 import regime
 import risk
@@ -68,12 +69,21 @@ def replay_returns(tickers):
     return out
 
 
+def load_weekly():
+    path = os.path.join(history.DATA, "weekly.jsonl")
+    if not os.path.exists(path):
+        return []
+    with open(path, encoding="utf-8") as f:
+        return [json.loads(line) for line in f if line.strip()]
+
+
 def main():
     holdings = dl.load_portfolio()
     shadows = shadow.load()
     held = [h["ticker"] for h in holdings if h["ticker"] not in dl.CASH]
     universe = sorted(set(held) | set(shadow.tickers()) | set(EXTRAS))
-    data = dl.download(universe + ["^GSPC", dl.RISK_FREE] + list(regime.TICKERS.values()))
+    data = dl.download(universe + ["^GSPC", dl.RISK_FREE] + list(regime.TICKERS.values())
+                       + factors.TICKERS)
     port = dl.portfolio_view(holdings, data)
     spx = data["^GSPC"]
 
@@ -171,7 +181,12 @@ def main():
         "daily": csv("portfolio"), "shadows": csv("shadows"), "valuations": csv("valuations"),
         "catalysts": list(reversed(csv("catalysts"))),
         "letters": list(reversed(history.load_letters())),
+        "weekly": list(reversed(load_weekly())),
     }
+    try:
+        site["factors"] = factors.analyze(port["history_1y"], port["prices"], data)
+    except Exception as e:
+        print("Factor analysis skipped:", e)
     try:
         site["backtest"] = backtest.run()
     except Exception as e:

@@ -47,6 +47,10 @@ table.data th:first-child, table.data td:first-child { text-align: left; padding
 table.data td { padding: 7px 0 7px 10px; border-bottom: 1px solid var(--hair); text-align: right; }
 table.data td.name { white-space: normal; }
 .up { color: var(--up); } .down { color: var(--down); }
+.scroll { overflow-x: auto; }
+table.heat td, table.heat th { text-align: center; padding: 6px 4px; font-size: 12.5px; }
+table.heat td:first-child, table.heat th:first-child { text-align: left; font-weight: 600; padding-right: 8px; }
+table.heat td.cell { border: 2px solid var(--card); min-width: 46px; }
 .tag { font-size: 9.5px; font-weight: 700; letter-spacing: .8px; text-transform: uppercase; color: var(--accent);
   border: 1px solid var(--accent); border-radius: 3px; padding: 0 4px; white-space: nowrap; }
 #cat-table td.name { text-align: left; } #cat-table th:nth-child(4) { text-align: left; }

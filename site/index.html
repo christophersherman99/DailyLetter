@@ -15,7 +15,7 @@
     and two interactive tools, rebuilt every weekday from the same code that writes the email.
     All portfolio figures are percentages.</p>
   <nav>
-    <a href="#today">Today</a><a href="#portfolio">Portfolio</a><a href="#simulator">Simulator</a><a href="#valuation">Valuation</a><a href="#history">History</a><a href="#catalysts">Catalysts</a><a href="#letters">Letters</a><a href="#method">Method</a>
+    <a href="#today">Today</a><a href="#portfolio">Portfolio</a><a href="#factors">Factors</a><a href="#simulator">Simulator</a><a href="#valuation">Valuation</a><a href="#history">History</a><a href="#catalysts">Catalysts</a><a href="#letters">Letters</a><a href="#method">Method</a>
   </nav>
 </header>
 
@@ -49,6 +49,28 @@
         <p class="note" id="regions"></p>
       </div>
     </div>
+  </section>
+
+  <section id="factors">
+    <div class="label">Factor exposure</div>
+    <p class="lede">A regression of the portfolio's daily returns on five factors built from index funds,
+      the same idea as academic factor models. A loading of +0.3 on Value means the portfolio has tended to
+      gain 0.3% for each 1% value stocks beat growth stocks.</p>
+    <p class="take small" id="factor-reading"></p>
+    <div class="grid two">
+      <div>
+        <h2 class="sub">Portfolio loadings <span class="muted small" id="factor-fit"></span></h2>
+        <table class="data" id="factor-table"></table>
+      </div>
+      <div>
+        <h2 class="sub">By holding</h2>
+        <div class="scroll"><table class="data heat" id="factor-holdings"></table></div>
+      </div>
+    </div>
+    <h2 class="sub">How holdings move together <span class="muted small">correlation of daily returns, past year</span></h2>
+    <div class="scroll"><table class="data heat" id="corr"></table></div>
+    <p class="note">Blue cells move together; orange cells move in opposite directions. Lower numbers mean more
+      diversification between that pair.</p>
   </section>
 
   <section id="simulator">

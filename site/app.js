@@ -24,6 +24,7 @@ fetch("data.json").then((r) => r.json()).then((data) => {
   Chart.defaults.color = C.faint;
   renderToday();
   renderPortfolio();
+  renderFactors();
   initSimulator();
   initDCF();
   renderHistory();
@@ -101,6 +102,43 @@ function renderPortfolio() {
   $("regions").innerHTML = "Regions: " + Object.entries(e.regions).filter(([, v]) => v >= 0.5)
     .map(([k, v]) => `${esc(k)} ${v.toFixed(0)}%`).join(" · ") +
     "<br>Biggest companies counting fund holdings: " + e.top.map((c) => `${esc(c.name)} ${c.pct.toFixed(1)}%`).join(" · ");
+}
+
+// ---------- factors ----------
+// Diverging cell shading: blue for positive, orange for negative, stronger with size
+function heat(v, scale = 1) {
+  const a = Math.min(Math.abs(v) / scale, 1) * 0.55;
+  const rgb = v >= 0 ? "31,111,178" : "196,86,10";
+  return `background:rgba(${rgb},${a.toFixed(3)});${a > 0.38 ? "color:#fff;" : ""}`;
+}
+
+function renderFactors() {
+  const f = D.factors;
+  if (!f) { $("factors").style.display = "none"; return; }
+  const p = f.portfolio;
+  $("factor-reading").innerHTML = f.reading.length
+    ? "Over the past year the portfolio " + f.reading.map(esc).join(", ").replace(/, ([^,]*)$/, ", and $1") + "."
+    : "Over the past year the portfolio has had no strong tilts beyond the market itself.";
+  $("factor-fit").textContent = `explains ${(p.r2 * 100).toFixed(0)}% of daily moves`;
+  const max = Math.max(...Object.values(p.loadings).map(Math.abs));
+  $("factor-table").innerHTML = `<tr><th>Factor</th><th></th><th>Loading</th><th>Confidence</th></tr>` +
+    f.factors.map((k) => {
+      const v = p.loadings[k], t = Math.abs(p.t[k]);
+      const w = (Math.abs(v) / max) * 70;
+      const bar = `<span style="display:inline-block;width:${w}px;height:7px;border-radius:2px;background:${v >= 0 ? C.up : C.down}"></span>`;
+      return `<tr><td>${k}</td><td style="text-align:left">${bar}</td><td>${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(2)}</td>
+        <td class="small muted">${t >= 3 ? "strong" : t >= 2 ? "moderate" : "weak"} (t ${t.toFixed(1)})</td></tr>`;
+    }).join("");
+  const hold = Object.keys(f.holdings);
+  $("factor-holdings").innerHTML = `<tr><th></th>${f.factors.map((k) => `<th>${k.slice(0, 5)}</th>`).join("")}</tr>` +
+    hold.map((t) => `<tr><td>${esc(t)}</td>${f.factors.map((k) => {
+      const v = f.holdings[t][k], centered = k === "Market" ? v - 1 : v;
+      return `<td class="cell" style="${heat(centered, 1)}">${v.toFixed(2)}</td>`;
+    }).join("")}</tr>`).join("");
+  const c = f.correlation;
+  $("corr").innerHTML = `<tr><th></th>${c.tickers.map((t) => `<th>${esc(t)}</th>`).join("")}</tr>` +
+    c.tickers.map((t, i) => `<tr><td>${esc(t)}</td>${c.matrix[i].map((v, j) =>
+      i === j ? `<td class="cell" style="color:${C.faint}">–</td>` : `<td class="cell" style="${heat(v, 1)}">${v.toFixed(2)}</td>`).join("")}</tr>`).join("");
 }
 
 // ---------- simulator ----------
@@ -404,10 +442,14 @@ function firstSentence(text, max = 150) {
 }
 
 function renderLetters() {
-  const letters = D.letters.filter((l) => l.take);
+  // Daily letters and Weekly Wraps, newest first
+  const weekly = (D.weekly || []).filter((w) => w.take).map((w) => ({ ...w, date: w.week_end, kind: "weekly" }));
+  const letters = [...D.letters.filter((l) => l.take), ...weekly].sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : (a.kind ? -1 : 1)));
   const item = (l, i) => `<details class="letter" data-date="${esc(l.date)}"${i >= ARCHIVE_SHOWN ? " hidden" : ""}>
-    <summary><span class="d">${fmtDate(l.date)}</span><span class="headline">${esc(firstSentence(l.take))}</span></summary>
+    <summary><span class="d">${l.kind ? `<span class="tag">Weekly Wrap</span> week ending ` : ""}${fmtDate(l.date)}</span><span class="headline">${esc(firstSentence(l.take))}</span></summary>
     <div class="body"><p>${esc(l.take)}</p>
+      ${l.lesson ? `<p><b>Lesson of the week: ${esc(l.lesson_title)}.</b> ${esc(l.lesson)}</p>` : ""}
+      ${l.kind && l.you_pct != null ? `<p class="small muted">Week: you ${pct(l.you_pct, 2)}, S&amp;P ${pct(l.spx_pct, 2)}</p>` : ""}
       ${l.portfolio ? `<p><i>${esc(l.portfolio)}</i></p>` : ""}
       ${(l.watch || []).length ? `<p><b>To watch:</b> ${l.watch.map(esc).join(" · ")}</p>` : ""}
       ${l.deep_dive ? `<p><b>Deep Dive:</b> ${esc(l.deep_dive)}</p>` : ""}
