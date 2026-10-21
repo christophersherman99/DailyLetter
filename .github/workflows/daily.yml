@@ -47,6 +47,7 @@ jobs:
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}  # optional: adds CPI and jobs dates
           DEEP_DIVE: ${{ inputs.deep_dive }}
           EDITION: ${{ inputs.edition != 'auto' && inputs.edition || '' }}
       - name: Save today's data

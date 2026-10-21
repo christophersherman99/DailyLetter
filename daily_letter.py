@@ -27,6 +27,7 @@ import backtest
 import catalysts
 import dcf
 import earnings
+import econ
 import history
 import regime
 import risk
@@ -58,11 +59,9 @@ RISK_FREE = "^IRX"  # 13-week T-bill yield, for the Sharpe ratio
 NEWS_FEEDS = {
     "Markets": "https://news.google.com/rss/search?q=stock+market+when:1d&hl=en-US&gl=US&ceid=US:en",
 }
-# Big macro dates. Earnings dates for your holdings are pulled automatically.
-MANUAL_EVENTS = [
-    {"date": "2026-10-28", "event": "Fed rate decision (FOMC)"},
-    {"date": "2026-12-09", "event": "Fed rate decision (FOMC)"},
-]
+# Extra dates to show under What to Watch, e.g. {"date": "2026-11-03", "event": "Election Day"}.
+# Fed meetings, GDP, PCE, and (with a FRED key) CPI and jobs come from econ.py automatically.
+MANUAL_EVENTS = []
 
 MOVER_MIN_CAP = 10e9   # adaptive movers: only companies worth $10B or more
 MOVER_MIN_MOVE = 3     # ...that moved at least this many percent
@@ -184,6 +183,7 @@ def market_headlines(n=4):
 
 
 def calendar(holdings):
+    """[(date, event, why it matters)]: holdings' earnings plus the economic calendar."""
     today = datetime.now(ET).date()
     horizon = today + timedelta(days=CALENDAR_DAYS)
     events = []
@@ -193,14 +193,15 @@ def calendar(holdings):
         try:
             d = yf.Ticker(h["ticker"]).calendar.get("Earnings Date", [None])[0]
             if d and today <= d <= horizon:
-                events.append((d, f"{h['ticker']} earnings"))
+                events.append((d, f"{h['ticker']} earnings", ""))
         except Exception:
             pass
+    events += econ.calendar(today, CALENDAR_DAYS)
     for e in MANUAL_EVENTS:
         d = date.fromisoformat(e["date"])
         if today <= d <= horizon:
-            events.append((d, e["event"]))
-    return sorted(events)
+            events.append((d, e["event"], e.get("why", "")))
+    return sorted(set(events))
 
 
 def deep_dive(holdings, rf):
@@ -407,7 +408,7 @@ def build_brief(port, world, futures, macro, sectors, movers, mover_news,
     L.append("\nHEADLINES:")
     L += [f"  {t}" for items in news.values() for t, _ in items]
     L.append("\nCOMING UP:")
-    L += [f"  {d:%a %b %d}: {e}" for d, e in events] or ["  nothing scheduled"]
+    L += [f"  {d:%a %b %d}: {e}" for d, e, _ in events] or ["  nothing scheduled"]
     if weather:
         L.append(f"\nMARKET REGIME: {weather['name']} (score {weather['score']} of "
                  f"{weather['max']}; 0 ok, 1 caution, 2 stress per signal)")
@@ -984,10 +985,12 @@ def build_html(port, world, futures, macro, movers, mover_news, holding_news, ne
             p.append(f"<tr>{td('Cash', 'left', f'color:{MUTED}')}{td('')}{td('')}"
                      f"{td(bar)}{td('')}</tr>")
             continue
-        tag = (f" <span style='font-size:9px;font-weight:700;letter-spacing:.8px;color:{ACCENT};"
+        big = (f" <span style='font-size:9px;font-weight:700;letter-spacing:.8px;color:{ACCENT};"
                f"border:1px solid {ACCENT};border-radius:3px;padding:0 3px;"
                f"vertical-align:middle'>BIG MOVE</span>" if abs(r["z"]) >= UNUSUAL_Z else "")
-        p.append(f"<tr>{td(f'<b>{r['ticker']}</b>{tag}', 'left')}{td(signed(r['day']))}"
+        name = (f"<a href='{escape(dash(f'company={quote(r['ticker'])}', 'company'))}' "
+                f"style='color:{INK};text-decoration:none'><b>{r['ticker']}</b></a>{big}")
+        p.append(f"<tr>{td(name, 'left')}{td(signed(r['day']))}"
                  f"{td(signed_money(r['day_usd']))}{td(bar)}"
                  f"{td(signed(r['since_bought'], '{:+.1f}%'))}</tr>")
     p.append("</table>")
@@ -1085,8 +1088,11 @@ def build_html(port, world, futures, macro, movers, mover_news, holding_news, ne
                   f"margin-bottom:10px'>{escape(w)}</div>" for w in ai["watch"]]
         if events:
             p.append(f"<div style='height:6px'></div>{TABLE}")
-            p += [f"<tr>{td(f'{d:%a %b} {d.day}', 'left', f'width:92px;color:{MUTED};font-size:12.5px')}"
-                  f"{td(escape(e), 'left')}</tr>" for d, e in events]
+            p += [f"<tr>{td(f'{d:%a %b} {d.day}', 'left', f'width:92px;color:{MUTED};font-size:12.5px;vertical-align:top')}"
+                  + td(escape(e) + (f"<div style='font-size:11.5px;color:{FAINT};margin-top:2px'>"
+                                    f"{escape(why)}</div>" if why else ""),
+                       "left", "white-space:normal")
+                  + "</tr>" for d, e, why in events]
             p.append("</table>")
 
     # Headlines

@@ -124,7 +124,7 @@ def build(today=None):
 
     ahead = earnings.scan(held, data, today=today)["previews"]
     previewed = {f"{a['ticker']} earnings" for a in ahead}  # the preview row says more
-    events = [(d, e) for d, e in dl.calendar(holdings)
+    events = [(d, e, why) for d, e, why in dl.calendar(holdings)
               if d <= today + timedelta(days=9) and e not in previewed]
     return {"ref": ref.date(), "end": end.date(), "you": you, "rows": rows,
             "spx": world["US"].get("S&P 500"), "shadows": shadows, "world": world,
@@ -153,7 +153,7 @@ def brief(w):
     L += [f"EARNINGS RESULT: {e['ticker']} EPS {e['eps']} vs {e['eps_est']}, reaction {e['reaction_pct']}%"
           for e in w["results"]]
     L += [f"EARNINGS NEXT: {p['ticker']} {p['date']} {p['timing']}" for p in w["ahead"]]
-    L += [f"CALENDAR: {d} {e}" for d, e in w["events"]]
+    L += [f"CALENDAR: {d} {e}" for d, e, _ in w["events"]]
     L.append("THIS WEEK'S DAILY LETTERS:")
     L += [f"  {e['date']}: {e['take']}" for e in w["letters"] if e.get("take")]
     return "\n".join(L)
@@ -253,7 +253,9 @@ def html(w, take):
                   for x in take["next_week"]]
         rows = [(date.fromisoformat(a["date"]), f"{a['ticker']} earnings, {a['timing']}"
                  + (f" (options imply &plusmn;{a['implied']['pct']:.1f}%)" if a["implied"] else ""))
-                for a in w["ahead"]] + [(d, escape(e)) for d, e in w["events"]]
+                for a in w["ahead"]] + [(d, escape(e) + (f"<div style='font-size:11.5px;color:{dl.FAINT}'>"
+                                                         f"{escape(why)}</div>" if why else ""))
+                                        for d, e, why in w["events"]]
         if rows:
             p.append(dl.TABLE + "".join(
                 f"<tr>{dl.td(f'{d:%a %b} {d.day}', 'left', f'width:92px;color:{dl.MUTED};font-size:12.5px')}"
