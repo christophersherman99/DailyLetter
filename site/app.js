@@ -28,7 +28,32 @@ fetch("data.json").then((r) => r.json()).then((data) => {
   initDCF();
   renderHistory();
   renderLetters();
+  applyDeepLink();
 }).catch((e) => { $("updated").textContent = "Could not load data: " + e; });
+
+// Links from the email open the dashboard at the matching spot:
+//   ?dcf=AAPL#valuation, ?preset=Conservative#simulator, ?letter=2026-10-21#letters
+function applyDeepLink() {
+  const q = new URLSearchParams(location.search);
+  let target = location.hash ? document.querySelector(location.hash) : null;
+  const dcf = (q.get("dcf") || "").toUpperCase();
+  const i = D.dcf.findIndex((d) => d.ticker === dcf);
+  if (i >= 0) { $("dcf-ticker").value = i; loadDCF(i); }
+  const preset = q.get("preset");
+  if (preset && D.presets[preset]) { setMix(D.presets[preset]); markPreset(preset); syncSliders(); updateSim(); }
+  const day = q.get("letter");
+  if (day) {
+    const el = document.querySelector(`#archive details[data-date="${CSS.escape(day)}"]`);
+    if (el) {
+      $("archive").querySelectorAll("details").forEach((d) => (d.hidden = false));
+      $("archive").querySelector(".more")?.remove();
+      el.open = true;
+      target = el;
+    }
+  }
+  // Content renders after the browser's own jump to the #anchor, so jump again now
+  if (target) requestAnimationFrame(() => target.scrollIntoView({ block: "start" }));
+}
 
 // ---------- today ----------
 function renderToday() {
@@ -319,7 +344,7 @@ function firstSentence(text, max = 150) {
 
 function renderLetters() {
   const letters = D.letters.filter((l) => l.take);
-  const item = (l, i) => `<details class="letter"${i >= ARCHIVE_SHOWN ? " hidden" : ""}>
+  const item = (l, i) => `<details class="letter" data-date="${esc(l.date)}"${i >= ARCHIVE_SHOWN ? " hidden" : ""}>
     <summary><span class="d">${fmtDate(l.date)}</span><span class="headline">${esc(firstSentence(l.take))}</span></summary>
     <div class="body"><p>${esc(l.take)}</p>
       ${l.portfolio ? `<p><i>${esc(l.portfolio)}</i></p>` : ""}

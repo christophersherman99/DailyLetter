@@ -12,6 +12,7 @@ from email.mime.image import MIMEImage
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from html import escape
+from urllib.parse import quote
 from zoneinfo import ZoneInfo
 
 import anthropic
@@ -544,11 +545,20 @@ def link(title, url, size=15):
             f"line-height:1.45'>{escape(title)}</a>")
 
 
-def label(text, top=True):
+def dash(query="", anchor=""):
+    """A link into the dashboard, opened at the matching section (see applyDeepLink in
+    site/app.js)."""
+    return DASHBOARD_URL + (f"?{query}" if query else "") + (f"#{anchor}" if anchor else "")
+
+
+def label(text, top=True, link=None):
     rule = f"border-top:1px solid {RULE};padding-top:20px;margin-top:30px;" if top else ""
+    explore = (f"<a href='{escape(link)}' style='float:right;color:{ACCENT};text-decoration:none;"
+               "font-weight:600;letter-spacing:.3px;text-transform:none;font-size:11.5px'>"
+               "Explore &rarr;</a>" if link else "")
     return (f"<div style='{rule}font-family:{SANS};font-size:11px;font-weight:700;"
             f"letter-spacing:1.6px;text-transform:uppercase;color:{ACCENT};"
-            f"margin-bottom:12px'>{text}</div>")
+            f"margin-bottom:12px'>{explore}{text}</div>")
 
 
 def caption(html):
@@ -586,7 +596,7 @@ def weather_html(w):
     color = {"Calm": UP, "Mixed": AMBER, "Stressed": DOWN}[w["name"]]
     dots = (UP, AMBER, DOWN)
     shapes = ("&#9679;", "&#9650;", "&#9632;")  # ok, caution, stress: readable without color
-    p = [label("Market Weather"),
+    p = [label("Market Weather", link=dash(anchor="today")),
          f"<div style='font-family:{SERIF};font-size:26px;color:{color};line-height:1.1'>"
          f"{w['name']}<span style='font-family:{SANS};font-size:12.5px;color:{MUTED}'>"
          f"&nbsp;&nbsp;{w['flags']} of {len(w['signals'])} signals flagged &nbsp;"
@@ -639,7 +649,7 @@ def stress_html(st):
 
 
 def risk_html(risk, exposure, corr, stress_tests=None):
-    p = [label("Risk Check")]
+    p = [label("Risk Check", link=dash(anchor="portfolio"))]
     if risk:
         tiles = [
             tile("Beta", f"{risk['beta']:.2f}", "S&amp;P = 1.00"),
@@ -691,7 +701,8 @@ def risk_html(risk, exposure, corr, stress_tests=None):
 def deep_dive_html(v, note):
     b = lambda x: f"${x / 1e9:,.0f}B" if x >= 1e10 else f"${x / 1e9:,.1f}B"
     ig = v["implied_growth"]
-    p = [label(f"Deep Dive &middot; {escape(v['name'])}")]
+    p = [label(f"Deep Dive &middot; {escape(v['name'])}",
+               link=dash(f"dcf={quote(v['ticker'])}", "valuation"))]
     if ig is not None:
         p.append(f"<div style='font-family:{SERIF};font-size:18px;line-height:1.5;color:{INK}'>"
                  f"Today's price implies <b>{ig:.1%}</b> revenue growth a year for "
@@ -759,7 +770,8 @@ def _three_month(series, like):
 def shadow_html(sh, you_risk, you_stress):
     since = date.fromisoformat(sh["since"])
     mix = DOT.join(f"{t} {w:.0%}" for t, w in sh["weights"].items())
-    p = [label(f"Shadow Portfolio &middot; {escape(sh['name'])}"),
+    p = [label(f"Shadow Portfolio &middot; {escape(sh['name'])}",
+               link=dash(f"preset={quote(sh['name'])}", "simulator")),
          f"<div style='{NUM};font-size:12.5px;color:{MUTED};line-height:1.6'>{mix}</div>",
          f"<div style='{NUM};font-size:12px;color:{FAINT};margin:4px 0 12px'>Your par: "
          f"tracked on paper at your portfolio's value since {since:%b} {since.day}. "
@@ -822,7 +834,9 @@ def build_html(port, world, futures, macro, movers, mover_news, holding_news, ne
              "Open the dashboard: simulator, valuation playground, history &rarr;</a></div>")
 
     if ai:
-        p.append(label("The Take", top=False).replace("margin-bottom:12px", "margin:24px 0 10px"))
+        p.append(label("The Take", top=False,
+                       link=dash(f"letter={world['US']['S&P 500']['date']}", "letters"))
+                 .replace("margin-bottom:12px", "margin:24px 0 10px"))
         p.append(f"<div style='font-family:{SERIF};font-size:17px;line-height:1.65;"
                  f"color:{INK}'>{escape(ai['take'])}</div>")
 
@@ -830,7 +844,7 @@ def build_html(port, world, futures, macro, movers, mover_news, holding_news, ne
         p.append(weather_html(weather))
 
     # Portfolio
-    p.append(label("Your Portfolio"))
+    p.append(label("Your Portfolio", link=dash(anchor="history")))
     p.append(f"<div style='font-family:{SERIF};font-size:36px;line-height:1.1;color:{INK}'>"
              f"${port['value']:,.2f}</div>"
              f"<div style='margin-top:10px;font-family:{SANS};font-size:13px;color:{MUTED}'>"
