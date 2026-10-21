@@ -134,6 +134,22 @@ def save_catalysts(day, radar):
         _upsert("catalysts", rows, day)
 
 
+def save_earnings(day, er):
+    """Keep every earnings result (one row per report) and each day's previews."""
+    rows = [{"date": day, "ticker": r["ticker"], "kind": "result", "report_date": r["date"],
+             "eps_est": r["eps_est"], "eps": r["eps"], "surprise_pct": r["surprise"],
+             "reaction_pct": round(r["reaction"], 2) if r["reaction"] is not None else None,
+             "implied_pct": None, "avg_move_pct": None} for r in er["results"]]
+    rows += [{"date": day, "ticker": p["ticker"], "kind": "preview", "report_date": p["date"],
+              "eps_est": p["eps_est"], "eps": None, "surprise_pct": None, "reaction_pct": None,
+              "implied_pct": round(p["implied"]["pct"], 2) if p["implied"] else None,
+              "avg_move_pct": round(p["avg_move"], 2) if p["avg_move"] is not None else None}
+             for p in er["previews"]]
+    if rows:
+        os.makedirs(DATA, exist_ok=True)
+        _upsert("earnings", rows, day)
+
+
 def last_valued():
     """{ticker: date of its most recent deep dive}."""
     path = os.path.join(DATA, "valuations.csv")

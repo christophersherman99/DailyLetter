@@ -25,6 +25,7 @@ import yfinance as yf
 
 import catalysts
 import dcf
+import earnings
 import history
 import regime
 import risk
@@ -299,7 +300,9 @@ not a verdict. Otherwise an empty string.
 
 You also get a rules-based market regime, stress tests, 5-day changes, the portfolio's \
 risk stats, and your previous letters. Mention the regime only when it changed, a signal \
-just flipped, or it explains the day. The catalyst radar tags event headlines (FDA, trials, deals, guidance, and so on); bring one \
+just flipped, or it explains the day. For earnings, compare the options-implied move with the stock's typical reaction, and for \
+results note when the reaction contradicts the beat or miss. Put any holding reporting in the \
+next two days in the watch list. The catalyst radar tags event headlines (FDA, trials, deals, guidance, and so on); bring one \
 up only when it touches the reader's holdings or watchlist, or is a major market event. \
 The shadow portfolio is the reader's own benchmark: \
 you may note a meaningful gap with the real portfolio, but never suggest switching to it \
@@ -431,6 +434,21 @@ def build_brief(port, world, futures, macro, sectors, movers, mover_news,
             L.append(f"  AI and big-tech exposure: {sh['ai']['pct']:.0f}%")
     if valuation:
         L.append("\nDEEP DIVE (DCF model):\n" + dcf.report(valuation))
+    er = (extras or {}).get("earnings")
+    if er and (er["previews"] or er["results"]):
+        L.append("\nEARNINGS:")
+        for p in er["previews"]:
+            L.append(f"  {p['ticker']} reports {p['date']} {p['timing']}: EPS estimate "
+                     + (f"{p['eps_est']:.2f}" if p["eps_est"] is not None else "n/a")
+                     + (f", options imply +/-{p['implied']['pct']:.1f}%" if p["implied"] else "")
+                     + (f", average move after the last {len(p['past_moves'])} reports "
+                        f"{p['avg_move']:.1f}%" if p["avg_move"] is not None else ""))
+        for r in er["results"]:
+            L.append(f"  {r['ticker']} reported {r['date']}: EPS {r['eps']:.2f} vs estimate "
+                     + (f"{r['eps_est']:.2f}" if r["eps_est"] is not None else "n/a")
+                     + (f" (surprise {r['surprise']:+.1f}%)" if r["surprise"] is not None else "")
+                     + (f", stock {r['reaction']:+.1f}% on {r['reaction_day']}"
+                        if r["reaction"] is not None else ""))
     radar = (extras or {}).get("radar")
     if radar:
         L.append("\nCATALYST RADAR (tagged headlines; type in brackets):")
@@ -774,6 +792,41 @@ def tag(kind):
             f"padding:0 4px;vertical-align:middle;white-space:nowrap'>{escape(kind)}</span>")
 
 
+def earnings_html(er, names=None):
+    names = names or {}
+    p = [label("Earnings Watch")]
+    for r in er["results"]:
+        beat = r["surprise"] is not None and r["surprise"] >= 0
+        verdict = ("" if r["surprise"] is None else
+                   f"{'beat' if beat else 'missed'} by {abs(r['surprise']):.1f}%")
+        when = date.fromisoformat(r["date"])
+        p.append(f"<div style='padding:9px 0;border-bottom:1px solid {HAIR};font-family:{SANS};"
+                 f"font-size:13.5px'>{tag('Results')}&nbsp; <b>{r['ticker']}</b> "
+                 f"<span style='color:{MUTED}'>{escape(names.get(r['ticker'], ''))}</span><br>"
+                 f"<span style='{NUM}'>Reported {when:%b} {when.day}: EPS ${r['eps']:.2f}"
+                 + (f" vs ${r['eps_est']:.2f} expected, {verdict}" if r["eps_est"] is not None else "")
+                 + (f". Stock {signed(r['reaction'], '{:+.1f}%')} on the news." if r["reaction"] is not None
+                    else ".") + "</span></div>")
+    for e in er["previews"]:
+        when = date.fromisoformat(e["date"])
+        implied = (tile("Options imply", f"&plusmn;{e['implied']['pct']:.1f}%",
+                        f"expiry {date.fromisoformat(e['implied']['expiry']):%b} "
+                        f"{date.fromisoformat(e['implied']['expiry']).day}")
+                   if e["implied"] else tile("Options imply", "&ndash;", "no expiry close enough"))
+        typical = tile("Typical reaction",
+                       f"&plusmn;{e['avg_move']:.1f}%" if e["avg_move"] is not None else "&ndash;",
+                       "last " + ", ".join(f"{m:+.1f}" for m in e["past_moves"]) if e["past_moves"] else "")
+        est = tile("EPS expected", f"${e['eps_est']:.2f}" if e["eps_est"] is not None else "&ndash;",
+                   f"{e['analysts']} analyst{'s' if e['analysts'] != 1 else ''}" if e["analysts"] else "")
+        p.append(f"<div style='font-family:{SANS};font-size:13.5px;margin:4px 0 8px'>{tag('Ahead')}"
+                 f"&nbsp; <b>{e['ticker']}</b> <span style='color:{MUTED}'>"
+                 f"{escape(names.get(e['ticker'], ''))} reports {when:%a %b} {when.day}, "
+                 f"{e['timing']}</span></div>"
+                 f"<table role='presentation' width='100%' cellpadding='0' cellspacing='0' "
+                 f"style='border-collapse:collapse;margin:0 -4px 10px'><tr>{est}{implied}{typical}</tr></table>")
+    return "".join(p)
+
+
 def radar_html(r):
     p = [label("Catalyst Radar", link=dash(anchor="catalysts"))]
     row = lambda left, right="": (
@@ -998,6 +1051,9 @@ def build_html(port, world, futures, macro, movers, mover_news, holding_news, ne
                      + (f"<div style='margin-top:4px'>{link(*head, size=14)}</div>" if head else "")
                      + "</div>")
 
+    er = extras.get("earnings")
+    if er and (er["previews"] or er["results"]):
+        p.append(earnings_html(er, exposure and exposure["names"]))
     if extras.get("radar"):
         p.append(radar_html(extras["radar"]))
 
@@ -1157,6 +1213,12 @@ def main():
         extras["radar"] = catalysts.scan(held, moves, exposure and exposure["names"])
     except Exception as e:
         print("Catalyst radar skipped:", e)
+    try:
+        funds = set(exposure["funds"]) if exposure else set()
+        extras["earnings"] = earnings.scan([t for t in held if t not in funds], data,
+                                           today=datetime.now(ET).date())
+    except Exception as e:
+        print("Earnings mode skipped:", e)
 
     day = str(world["US"]["S&P 500"]["date"])  # the US session this letter covers
     brief = build_brief(port, world, futures, macro, sectors, movers, mover_news,
@@ -1199,6 +1261,8 @@ def main():
         history.save_shadows(day, shadows)
         if extras.get("radar"):
             history.save_catalysts(day, extras["radar"])
+        if extras.get("earnings"):
+            history.save_earnings(day, extras["earnings"])
         print("Saved history for", day)
 
 
