@@ -1,5 +1,7 @@
 # The Daily Letter
 
+[![Tests](https://github.com/christophersherman99/DailyLetter/actions/workflows/tests.yml/badge.svg)](https://github.com/christophersherman99/DailyLetter/actions/workflows/tests.yml)
+
 An automated morning market letter built around my own portfolio, with a public companion dashboard.
 
 **Dashboard:** https://christophersherman99.github.io/DailyLetter/
