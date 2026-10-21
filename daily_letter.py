@@ -23,6 +23,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import yfinance as yf
 
+import backtest
 import catalysts
 import dcf
 import earnings
@@ -616,7 +617,7 @@ def tile(name, value, sub):
             f"<div style='{NUM};font-size:11px;color:{MUTED}'>{sub}</div></div></td>")
 
 
-def weather_html(w):
+def weather_html(w, bt=None):
     color = {"Calm": UP, "Mixed": AMBER, "Stressed": DOWN}[w["name"]]
     dots = (UP, AMBER, DOWN)
     shapes = ("&#9679;", "&#9650;", "&#9632;")  # ok, caution, stress: readable without color
@@ -637,6 +638,12 @@ def weather_html(w):
                       f"white-space:normal;color:{MUTED};font-size:13px;vertical-align:top")
                  + "</tr>")
     p.append("</table>")
+    past = bt and bt["summary"].get(w["name"], {}).get("3 months")
+    if past:
+        p.append(f"<div style='{NUM};font-size:12px;color:{MUTED};margin-top:8px;line-height:1.5'>"
+                 f"Since {bt['since'][:4]}, weeks rated {w['name']} were followed by an average "
+                 f"{signed(past['avg'], '{:+.1f}%')} S&amp;P move over 3 months, with a typical dip of "
+                 f"{past['avg_drawdown']:.1f}% along the way.</div>")
     return "".join(p)
 
 
@@ -950,7 +957,7 @@ def build_html(port, world, futures, macro, movers, mover_news, holding_news, ne
                  f"color:{INK}'>{escape(ai['take'])}</div>")
 
     if weather:
-        p.append(weather_html(weather))
+        p.append(weather_html(weather, extras.get("backtest")))
 
     # Portfolio
     p.append(label("Your Portfolio", link=dash(anchor="history")))
@@ -1213,6 +1220,10 @@ def main():
         extras["radar"] = catalysts.scan(held, moves, exposure and exposure["names"])
     except Exception as e:
         print("Catalyst radar skipped:", e)
+    try:
+        extras["backtest"] = backtest.run()
+    except Exception as e:
+        print("Weather backtest skipped:", e)
     try:
         funds = set(exposure["funds"]) if exposure else set()
         extras["earnings"] = earnings.scan([t for t in held if t not in funds], data,

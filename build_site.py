@@ -13,6 +13,7 @@ from datetime import datetime
 import pandas as pd
 import yfinance as yf
 
+import backtest
 import daily_letter as dl
 import dcf
 import history
@@ -171,6 +172,10 @@ def main():
         "catalysts": list(reversed(csv("catalysts"))),
         "letters": list(reversed(history.load_letters())),
     }
+    try:
+        site["backtest"] = backtest.run()
+    except Exception as e:
+        print("Backtest skipped:", e)
     os.makedirs(SITE, exist_ok=True)
     with open(os.path.join(SITE, "data.json"), "w", encoding="utf-8") as f:
         json.dump(site, f, separators=(",", ":"), allow_nan=False)

@@ -325,13 +325,53 @@ function renderHistory() {
     new Chart(canvas, cfg);
   };
   small($("regime-chart"), "Regime score", daily.map((d) => d.regime_score), C.amber, (v) => v.toFixed(0), 14);
-  small($("ai-chart"), "AI exposure", daily.map((d) => d.ai_exposure_pct), C.accent, (v) => v.toFixed(0) + "%");
+  small($("ai-chart"), "AI exposure", daily.map((d) => d.ai_exposure_pct), C.accent, (v) => v.toFixed(1) + "%");
+
+  renderBacktest();
 
   const vals = [...D.valuations].reverse();
   $("valuations").innerHTML = vals.length ? `<tr><th>Date</th><th>Company</th><th>Price</th><th>DCF value</th><th>Price implies</th><th>Analysts yr 1</th></tr>` +
     vals.map((v) => `<tr><td>${fmtDate(v.date)}</td><td><b>${esc(v.ticker)}</b></td><td>$${v.price.toFixed(2)}</td>
       <td>$${v.model_value.toFixed(0)} ${signed(v.upside_pct, 0)}</td><td>${v.implied_growth_pct == null ? "–" : v.implied_growth_pct.toFixed(1) + "% a year"}</td>
       <td>${v.growth_y1_pct.toFixed(1)}%</td></tr>`).join("") : "<tr><td>No Deep Dives yet.</td></tr>";
+}
+
+// ---------- weather backtest ----------
+function renderBacktest() {
+  const bt = D.backtest;
+  if (!bt) { $("bt-table").innerHTML = "<tr><td>Backtest unavailable today.</td></tr>"; return; }
+  const s = bt.summary, h = "3 months";
+  $("bt-since").textContent = `${bt.weeks} weeks since ${fmtDate(bt.since)}`;
+  const names = ["Calm", "Mixed", "Stressed", "All weeks"].filter((n) => s[n] && s[n][h]);
+  $("bt-table").innerHTML = `<tr><th>Reading</th><th>Share of weeks</th><th>S&amp;P next 3 months</th>
+      <th>Fell</th><th>Typical dip</th><th>Next month</th></tr>` +
+    names.map((n) => { const x = s[n][h], m = s[n]["1 month"];
+      return `<tr><td><b>${n}</b></td><td>${s[n].share.toFixed(0)}%</td><td>${signed(x.avg)}</td>
+        <td>${x.pct_negative.toFixed(0)}% of the time</td><td>${pct(x.avg_drawdown)}</td><td>${signed(m.avg)}</td></tr>`; }).join("");
+  // A plain-English reading of the result, computed from the numbers
+  const c = s.Calm?.[h], st = s.Stressed?.[h];
+  if (c && st) {
+    const riskier = st.avg_drawdown < c.avg_drawdown, better = st.avg > c.avg;
+    $("bt-finding").innerHTML = `After <b>Stressed</b> readings the S&amp;P averaged ${pct(st.avg)} over three months
+      with a typical dip of ${pct(st.avg_drawdown)}; after <b>Calm</b> readings, ${pct(c.avg)} with a dip of ${pct(c.avg_drawdown)}.
+      ${riskier ? "The rules flag rougher markets ahead" : "The rules did not flag rougher markets"}${riskier && better
+        ? ", but not lower returns: fear has tended to peak near bottoms, so the signal measures risk, not direction." : "."}`;
+  }
+  const cfg = lineConfig((v) => v.toLocaleString("en-US", { maximumFractionDigits: 0 }));
+  cfg.data.labels = bt.timeline.dates;
+  cfg.data.datasets = [
+    { ...ds("S&P 500", bt.timeline.spx, C.accent, 1.6), yAxisID: "y" },
+    { type: "bar", label: "Regime score", data: bt.timeline.score, yAxisID: "y2",
+      backgroundColor: bt.timeline.score.map((v) => (v >= 6 ? C.down : v >= 3 ? C.amber : "#c9d3e0")), barPercentage: 1, categoryPercentage: 1 },
+  ];
+  cfg.options.scales.x.ticks.callback = function (v) { const d = this.getLabelForValue(v); return d ? d.slice(0, 4) : ""; };
+  cfg.options.scales.x.ticks.maxTicksLimit = 9;
+  cfg.options.scales.y2 = { position: "left", min: 0, max: 30, grid: { display: false }, border: { display: false },
+    ticks: { display: false } };
+  cfg.options.plugins.tooltip.callbacks.label = (c) => ` ${c.dataset.label}: ${c.datasetIndex ? c.parsed.y : c.parsed.y.toFixed(0)}`;
+  new Chart($("bt-chart"), cfg);
+  $("bt-legend").innerHTML = legend([["S&P 500", C.accent]]) +
+    ` &nbsp; Bars: weekly regime score (pale calm, <span style="color:${C.amber}">▲ amber mixed</span>, <span style="color:${C.down}">■ orange stressed</span>)`;
 }
 
 // ---------- catalysts ----------
