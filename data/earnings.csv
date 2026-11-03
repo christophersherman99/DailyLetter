@@ -36,3 +36,5 @@ date,ticker,kind,report_date,eps_est,eps,surprise_pct,reaction_pct,implied_pct,a
 2026-10-30,DXCM,result,2026-10-29,0.67,0.73,8.31,2.95,,
 2026-10-30,AAPL,preview,2026-11-02,1.98895,,,,4.25,3.69
 2026-10-30,MCD,preview,2026-11-04,3.38009,,,,4.16,1.55
+2026-11-03,AAPL,result,2026-11-02,1.99,2.1,5.75,-1.78,,
+2026-11-03,MCD,preview,2026-11-04,3.38009,,,,3.62,1.55
