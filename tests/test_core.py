@@ -37,9 +37,10 @@ def test_scrub_removes_personal_dollars_but_keeps_prices():
 
 def test_public_data_has_no_dollar_values_or_share_counts():
     forbidden_cols = {"shares", "value", "cost_basis", "day_usd", "gain_usd", "var_usd"}
-    data = os.path.join(ROOT, "data")
-    for name in os.listdir(data):
-        path = os.path.join(data, name)
+    files = [os.path.join(d, f) for d, _, names in os.walk(os.path.join(ROOT, "data")) for f in names]
+    assert files
+    for path in files:
+        name = os.path.relpath(path, ROOT)
         text = open(path, encoding="utf-8").read()
         assert not re.search(r"[+-]\s?\$\d", text), f"signed dollar amount in {name}"
         if name.endswith(".csv"):
