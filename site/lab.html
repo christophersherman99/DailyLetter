@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DCF Lab · The Daily Letter</title>
+<meta name="description" content="Build a discounted cash flow model step by step from a company's real financial statements, then export it to Excel with live formulas.">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="lab.css">
+</head>
+<body>
+<header class="wrap masthead">
+  <div class="kicker"><a href="./">The Daily Letter</a> &middot; Learning workspace</div>
+  <h1>The DCF Lab</h1>
+  <p class="dek">Build a discounted cash flow valuation yourself, one step at a time, from a company's real
+    financial statements. Every number is yours to change; the explanations show what each one means
+    and where to find it in a 10-K.</p>
+  <div class="lab-pick">
+    <label for="lab-ticker" class="small muted">Company</label>
+    <select id="lab-ticker" aria-label="Company"></select>
+    <button class="ghost" id="lab-reset">Reset to starting assumptions</button>
+    <button id="lab-xlsx">Download as Excel</button>
+  </div>
+</header>
+
+<div class="result-bar" id="result-bar" aria-live="polite"></div>
+
+<main class="wrap lab">
+  <section class="step" id="s1">
+    <div class="step-n">Step 1</div>
+    <h2>Know the business</h2>
+    <div class="explain" id="s1-explain"></div>
+    <div class="scroll"><table class="data" id="history"></table></div>
+    <p class="where">In the 10-K: Item 8, Financial Statements. Revenue and operating income are on the
+      income statement; depreciation, capital expenditures and working capital are on the cash flow statement.</p>
+  </section>
+
+  <section class="step" id="s2">
+    <div class="step-n">Step 2</div>
+    <h2>Forecast revenue</h2>
+    <div class="explain">
+      <p>A DCF values a company by the cash it will produce in the future, so it starts with how fast sales
+        will grow. Most models forecast five years in detail, then assume a slower, steady rate forever.</p>
+      <p><b>Anchor on evidence:</b> the company's own track record, and what analysts expect for the next
+        two years. Growth usually fades toward the economy's long-run pace (2 to 3%) as a company matures.</p>
+    </div>
+    <div class="hints" id="s2-hints"></div>
+    <div class="inputs five" id="growth-inputs"></div>
+    <div class="scroll"><table class="data" id="rev-table"></table></div>
+  </section>
+
+  <section class="step" id="s3">
+    <div class="step-n">Step 3</div>
+    <h2>From revenue to free cash flow</h2>
+    <div class="explain">
+      <p>Investors are paid from <b>free cash flow</b>: the cash left after running the business and
+        reinvesting in it. For a DCF of the whole company we use free cash flow to the firm, before any
+        payments to lenders or shareholders:</p>
+      <p class="formula">FCFF = EBIT &times; (1 &minus; tax rate) + D&amp;A &minus; capital spending &minus; increase in working capital</p>
+      <ul>
+        <li><b>EBIT</b> (operating profit) is what the business earns before interest and taxes.</li>
+        <li><b>D&amp;A</b> (depreciation and amortization) is subtracted in EBIT but costs no cash this year,
+          so it is added back.</li>
+        <li><b>Capital spending</b> (capex) is cash invested in new restaurants, stores or equipment.</li>
+        <li><b>Working capital</b> is cash tied up in inventory and receivables; growing usually needs more.</li>
+      </ul>
+      <p>Each is set as a percentage of revenue, using the history in Step 1 as a guide.</p>
+    </div>
+    <div class="inputs" id="fcf-inputs"></div>
+    <div class="scroll"><table class="data" id="fcf-table"></table></div>
+  </section>
+
+  <section class="step" id="s4">
+    <div class="step-n">Step 4</div>
+    <h2>The discount rate (WACC)</h2>
+    <div class="explain">
+      <p>A dollar in five years is worth less than a dollar today, and a risky dollar is worth less still.
+        The discount rate is the return investors demand. Because the business is financed by both
+        shareholders and lenders, we blend their required returns by how much of each the company uses:
+        the <b>weighted average cost of capital</b>.</p>
+      <p class="formula">Cost of equity = risk-free rate + beta &times; equity risk premium &nbsp;(CAPM)</p>
+      <p class="formula">WACC = equity weight &times; cost of equity + debt weight &times; cost of debt &times; (1 &minus; tax rate)</p>
+      <p><b>Beta</b> measures how much the stock moves with the market; the <b>equity risk premium</b> is the
+        extra return investors expect from stocks over Treasuries, commonly 4 to 6%. Interest is tax
+        deductible, which is why debt is cheaper after tax.</p>
+    </div>
+    <div class="inputs" id="wacc-inputs"></div>
+    <div id="wacc-out"></div>
+  </section>
+
+  <section class="step" id="s5">
+    <div class="step-n">Step 5</div>
+    <h2>Terminal value</h2>
+    <div class="explain">
+      <p>The company keeps going after year five, so we capture everything beyond it in one number, the
+        terminal value. Two standard ways, which make a good cross-check on each other:</p>
+      <ul>
+        <li><b>Perpetuity growth (Gordon):</b> year-6 cash flow &divide; (WACC &minus; growth). The growth
+          rate must stay below the economy's long-run growth, or the company eventually becomes the economy.</li>
+        <li><b>Exit multiple:</b> what the business might sell for, as a multiple of EBITDA, based on what
+          similar companies trade at today.</li>
+      </ul>
+      <p>The terminal value is often more than half of the total. That is why small changes here matter so much.</p>
+    </div>
+    <div class="inputs" id="tv-inputs"></div>
+    <div id="tv-out"></div>
+  </section>
+
+  <section class="step" id="s6">
+    <div class="step-n">Step 6</div>
+    <h2>From enterprise value to a share price</h2>
+    <div class="explain">
+      <p>Discounting every cash flow and the terminal value to today gives <b>enterprise value</b>: the value
+        of the whole business. Lenders are paid first, so subtract debt and add back cash to get the
+        <b>equity value</b>, then divide by shares outstanding.</p>
+    </div>
+    <div id="bridge"></div>
+    <h3 class="sub">How sensitive is your answer?</h3>
+    <p class="note">Value per share at different discount rates (rows) and long-run growth or exit multiples
+      (columns). Blue cells are above today's price.</p>
+    <div class="scroll"><table class="data heat" id="sens"></table></div>
+    <h3 class="sub">Check your work</h3>
+    <div id="check"></div>
+  </section>
+
+  <section class="step" id="glossary">
+    <div class="step-n">Reference</div>
+    <h2>Where to go next</h2>
+    <ul class="method">
+      <li>Download your model as an Excel file: every forecast cell is a live formula linked to the
+        inputs, so you can rebuild it, change it, or extend it to ten years.</li>
+      <li>Open the company's latest 10-K on sec.gov (search "EDGAR full text search") and find each
+        historical number from Step 1. Reading the notes on debt, leases and segments is where real
+        analysis starts.</li>
+      <li>Try the same company with very different assumptions and write down which belief moves the value
+        most. That belief is what an investment thesis is about.</li>
+    </ul>
+    <p class="note">Educational tool, not investment advice. Data from Yahoo Finance, may be delayed.</p>
+  </section>
+</main>
+
+<footer class="wrap"><a href="./">Back to the dashboard</a> &middot; <span id="lab-footer"></span></footer>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="lab.js"></script>
+</body>
+</html>

@@ -28,6 +28,7 @@ import catalysts
 import dcf
 import earnings
 import econ
+import fundamentals
 import history
 import regime
 import risk
@@ -1296,6 +1297,10 @@ def main():
             history.save_catalysts(day, extras["radar"])
         if extras.get("earnings"):
             history.save_earnings(day, extras["earnings"])
+        # Keep the DCF Lab's statement archive current (committed with the rest of data/)
+        funds = set(exposure["funds"]) if exposure else set()
+        for t in dict.fromkeys(["MCD"] + [t for t in held if t not in funds]):
+            fundamentals.update(t)
         print("Saved history for", day)
 
 

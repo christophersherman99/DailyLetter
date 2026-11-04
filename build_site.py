@@ -17,6 +17,7 @@ import backtest
 import daily_letter as dl
 import dcf
 import factors
+import fundamentals
 import history
 import regime
 import risk
@@ -86,6 +87,34 @@ def replay_returns(tickers, closes):
             else:
                 out[t][name] = None
     return out
+
+
+LAB_FIRST = "MCD"  # the Lab opens on this company
+
+
+def build_lab(held, infos, rf):
+    """site/lab.json: archived fundamentals for the DCF Lab, plus the letter's own model
+    value for each company so the reader can compare their build with it."""
+    stocks = [t for t in dict.fromkeys([LAB_FIRST] + held)
+              if (infos.get(t) or {}).get("quoteType", "EQUITY") == "EQUITY"
+              and (infos.get(t) or {}).get("sector") not in dcf.SKIP_SECTORS]
+    companies = []
+    for t in stocks:
+        rec = fundamentals.update(t)
+        if not rec or not rec.get("years"):
+            continue
+        try:
+            model = dcf.run(t, rf)
+            rec["letter_model"] = None if model.get("skipped") else {
+                "per_share": _r(model["per_share"], 2), "wacc": _r(model["wacc"], 5),
+                "implied_growth": _r(model["implied_growth"], 5), "years": dcf.YEARS}
+        except Exception:
+            rec["letter_model"] = None
+        companies.append(rec)
+    with open(os.path.join(SITE, "lab.json"), "w", encoding="utf-8") as f:
+        json.dump({"rf": _r(rf, 5), "erp": dcf.EQUITY_RISK_PREMIUM, "companies": companies},
+                  f, separators=(",", ":"), allow_nan=False)
+    print("Wrote site/lab.json:", [c["ticker"] for c in companies])
 
 
 def load_weekly():
@@ -219,6 +248,7 @@ def main():
     except Exception as e:
         print("Backtest skipped:", e)
     os.makedirs(SITE, exist_ok=True)
+    build_lab(held, infos, rf10)
     with open(os.path.join(SITE, "data.json"), "w", encoding="utf-8") as f:
         json.dump(site, f, separators=(",", ":"), allow_nan=False)
     print("Wrote site/data.json:", len(blocks), "building blocks,", len(dcf_inputs), "DCF models")

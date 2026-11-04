@@ -1,0 +1,55 @@
+.lab-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 14px; }
+.lab-pick select { width: auto; min-width: 240px; margin: 0; }
+.lab-pick button.ghost { margin-top: 0; }
+.kicker a { color: var(--muted); border: 0; }
+
+.result-bar { position: sticky; top: 0; z-index: 5; background: var(--ink); color: #fff;
+  font-variant-numeric: tabular-nums; }
+.result-bar .wrap { display: flex; flex-wrap: wrap; gap: 6px 26px; align-items: baseline; padding-top: 10px;
+  padding-bottom: 10px; font-size: 13px; }
+.result-bar b { font-family: var(--serif); font-weight: normal; font-size: 22px; }
+.result-bar .k { color: #b9b4aa; font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; margin-right: 6px; }
+.result-bar .up { color: #8fc3f2; } .result-bar .down { color: #f2b083; }
+
+main.lab { padding-top: 4px; }
+.step { scroll-margin-top: 64px; }
+.step-n { font-size: 11px; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase; color: var(--accent); }
+.step h2 { font-family: var(--serif); font-weight: normal; font-size: 26px; margin: 4px 0 10px; }
+h3.sub { font-family: var(--serif); font-weight: normal; font-size: 18px; margin: 20px 0 6px; }
+.explain { font-family: var(--serif); font-size: 16px; line-height: 1.6; color: #2f2c28; max-width: 780px; }
+.explain p { margin: 0 0 10px; } .explain ul { margin: 0 0 10px; padding-left: 20px; }
+.explain li { margin-bottom: 4px; }
+.formula { font-family: var(--sans); font-size: 14px; background: var(--paper); border-left: 3px solid var(--accent);
+  padding: 8px 12px; }
+.where { font-size: 12.5px; color: var(--muted); border-top: 1px dashed var(--rule); padding-top: 8px; margin-top: 10px; }
+.where::before { content: "Where to find it  "; font-weight: 700; color: var(--accent); }
+.company-note { background: #f7f3ea; border: 1px solid var(--rule); padding: 10px 14px; font-size: 14px;
+  margin: 10px 0; font-family: var(--serif); }
+.company-note::before { content: "About this company  "; font-family: var(--sans); font-size: 10.5px; font-weight: 700;
+  letter-spacing: 1px; text-transform: uppercase; color: var(--accent); }
+.hints { font-size: 13px; color: var(--muted); margin: 6px 0 10px; }
+.hints b { color: var(--ink); }
+
+.inputs { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px 16px; margin: 12px 0; }
+.inputs.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.field label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+.field .row { display: flex; align-items: center; gap: 4px; }
+.field input[type=number] { width: 100%; font: inherit; font-size: 15px; font-variant-numeric: tabular-nums;
+  padding: 6px 8px; border: 1px solid var(--rule); background: #fff; color: var(--ink); border-radius: 3px; }
+.field input[type=number]:focus { border-color: var(--accent); outline: 2px solid var(--up-bg); }
+.field .unit { font-size: 13px; color: var(--muted); }
+.field .hist { font-size: 11px; color: var(--faint); margin-top: 3px; }
+.toggle { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+.toggle button.on { background: var(--accent); color: #fff; }
+
+table.data tr.total td { font-weight: 700; border-top: 1px solid var(--ink); }
+table.data tr.sub td { color: var(--muted); font-size: 12.5px; }
+table.data td.fc { background: #fbf9f4; }
+.out-line { font-size: 14px; margin: 6px 0; font-variant-numeric: tabular-nums; }
+.out-line b { font-family: var(--serif); font-size: 18px; font-weight: normal; }
+.check { border-left: 3px solid var(--accent); padding: 4px 0 4px 12px; margin: 8px 0; font-family: var(--serif);
+  font-size: 15.5px; line-height: 1.55; }
+@media (max-width: 760px) {
+  .inputs.five { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .step h2 { font-size: 22px; }
+}
