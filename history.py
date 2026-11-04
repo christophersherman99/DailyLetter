@@ -159,6 +159,29 @@ def last_valued():
     return df.groupby("ticker")["date"].max().to_dict()
 
 
+SENT = os.path.join(DATA, "sent.json")
+
+
+def already_sent(edition, day):
+    """Has this edition already gone out on `day` (YYYY-MM-DD, New York time)?"""
+    if not os.path.exists(SENT):
+        return False
+    with open(SENT, encoding="utf-8") as f:
+        return json.load(f).get(edition) == day
+
+
+def mark_sent(edition, day):
+    """Record the send so backup runs later in the day don't send a duplicate."""
+    marks = {}
+    if os.path.exists(SENT):
+        with open(SENT, encoding="utf-8") as f:
+            marks = json.load(f)
+    marks[edition] = day
+    os.makedirs(DATA, exist_ok=True)
+    with open(SENT, "w", encoding="utf-8") as f:
+        json.dump(marks, f, indent=1, sort_keys=True)
+
+
 def load_letters():
     if not os.path.exists(LETTERS):
         return []

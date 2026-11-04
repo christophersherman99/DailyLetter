@@ -89,7 +89,9 @@ def _rows_in_week(name, ref, end):
     if not os.path.exists(path):
         return []
     df = pd.read_csv(path, dtype={"date": str})
-    return df[(df["date"] > str(ref.date())) & (df["date"] <= str(end.date()))].to_dict("records")
+    df = df[(df["date"] > str(ref.date())) & (df["date"] <= str(end.date()))]
+    # Blank CSV cells read back as NaN (a float); turn them into None so they stay falsy
+    return df.astype(object).where(df.notna(), None).to_dict("records")
 
 
 def build(today=None):

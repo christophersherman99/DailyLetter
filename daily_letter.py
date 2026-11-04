@@ -1153,10 +1153,20 @@ def send(subject, html, text, images):
 
 def main():
     # Saturdays (or EDITION=weekly) send the Weekly Wrap instead of a daily letter
-    if os.environ.get("EDITION") == "weekly" or (
-            not os.environ.get("EDITION") and datetime.now(ET).weekday() == 5):
+    weekly_edition = os.environ.get("EDITION") == "weekly" or (
+        not os.environ.get("EDITION") and datetime.now(ET).weekday() == 5)
+    edition, today = ("weekly" if weekly_edition else "daily"), datetime.now(ET).strftime("%Y-%m-%d")
+    # Scheduled runs fire more than once a day as a backup against GitHub skipping one;
+    # only the first that gets through sends
+    if os.environ.get("SKIP_IF_SENT") and history.already_sent(edition, today):
+        print(f"The {edition} edition already went out today; nothing to do.")
+        return
+    if weekly_edition:
         import weekly
-        return weekly.main()
+        weekly.main()
+        if not os.environ.get("DRY_RUN"):
+            history.mark_sent(edition, today)
+        return
     holdings = load_portfolio()
     movers = screen_movers()
     world_tickers = [t for rows in WORLD.values() for t in rows.values()]
@@ -1270,6 +1280,7 @@ def main():
     else:
         send(subject, html, text, images)
         print("Sent:", subject)
+        history.mark_sent("daily", datetime.now(ET).strftime("%Y-%m-%d"))
         history.save_day(day, port, {"World": {f"{r} {n}": q for r, rows in world.items()
                                                for n, q in rows.items()},
                                      "Futures": futures, "Macro": macro, "Sectors": sectors},

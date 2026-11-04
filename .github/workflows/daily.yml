@@ -2,10 +2,16 @@ name: Daily Letter
 
 on:
   schedule:
-    # 11:00 UTC = 7:00am New York in summer, 6:00am in winter (GitHub often runs a bit late)
-    - cron: "0 11 * * 1-5"
-    # Saturday 13:00 UTC (9am New York in summer): the Weekly Wrap
-    - cron: "0 13 * * 6"
+    # GitHub delays scheduled runs and sometimes skips them, most often on the hour, so each
+    # edition is scheduled off the hour with backups; the first run that gets through sends,
+    # and the rest see it already went out (data/sent.json) and stop.
+    # Weekdays 11:17 UTC = 6:17am New York in winter (7:17 in summer), backups 12:47 and 15:17
+    - cron: "17 11 * * 1-5"
+    - cron: "47 12 * * 1-5"
+    - cron: "17 15 * * 1-5"
+    # Saturday Weekly Wrap: 13:23 UTC, backup 15:53
+    - cron: "23 13 * * 6"
+    - cron: "53 15 * * 6"
   push:  # dashboard changes redeploy the site without sending an email
     branches: [main]
     paths: ["site/**", "build_site.py"]
@@ -50,6 +56,7 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}  # optional: adds CPI and jobs dates
           DEEP_DIVE: ${{ inputs.deep_dive }}
           EDITION: ${{ inputs.edition != 'auto' && inputs.edition || '' }}
+          SKIP_IF_SENT: ${{ github.event_name == 'schedule' && '1' || '' }}
       - name: Save today's data
         run: |
           git config user.name "github-actions[bot]"
