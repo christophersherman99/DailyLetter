@@ -4,10 +4,10 @@
  "sector": "Technology",
  "industry": "Consumer Electronics",
  "currency": "USD",
- "price": 354.09,
+ "price": 343.56,
  "shares_out": 14532182000.0,
  "beta": 1.089,
- "ev_ebitda": 28.263,
+ "ev_ebitda": 29.839,
  "analyst_growth": [
   0.1479,
   0.08180001
@@ -92,7 +92,27 @@
    "equity": 73733000000.0,
    "shares": 14773260000.0,
    "nwc_investment": 25000000000.0
+  },
+  "2026": {
+   "fy": "2026",
+   "period_end": "2026-09-30",
+   "revenue": 478834000000.0,
+   "ebit": 158063000000.0,
+   "da": 13423000000.0,
+   "interest": null,
+   "tax_rate": 0.17,
+   "net_income": 132175000000.0,
+   "ocf": 145097000000.0,
+   "capex": 9041000000.0,
+   "fcf": 136056000000.0,
+   "buybacks": 86390000000.0,
+   "dividends": 15721000000.0,
+   "debt": 80111000000.0,
+   "cash": 56722000000.0,
+   "equity": 112093000000.0,
+   "shares": 14532259000.0,
+   "nwc_investment": 14858000000.0
   }
  },
- "fetched": "2026-11-04"
+ "fetched": "2026-11-05"
 }
