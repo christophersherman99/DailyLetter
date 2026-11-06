@@ -4,13 +4,13 @@
  "sector": "Consumer Cyclical",
  "industry": "Internet Retail",
  "currency": "USD",
- "price": 259.3,
+ "price": 261.27,
  "shares_out": 10813138306.0,
  "beta": 1.503,
- "ev_ebitda": 16.695,
+ "ev_ebitda": 16.353,
  "analyst_growth": [
   0.15619999,
-  0.1461
+  0.1558
  ],
  "years": {
   "2022": {
@@ -94,5 +94,5 @@
    "nwc_investment": 19969000000.0
   }
  },
- "fetched": "2026-11-05"
+ "fetched": "2026-11-06"
 }

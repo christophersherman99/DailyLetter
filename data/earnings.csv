@@ -42,3 +42,5 @@ date,ticker,kind,report_date,eps_est,eps,surprise_pct,reaction_pct,implied_pct,a
 2026-11-04,MCD,result,2026-11-04,3.38,3.57,5.62,5.34,,
 2026-11-05,AAPL,result,2026-11-02,1.99,2.1,5.75,-1.9,,
 2026-11-05,MCD,result,2026-11-04,3.38,3.57,5.62,6.53,,
+2026-11-06,AAPL,result,2026-11-02,1.99,2.1,5.75,-1.9,,
+2026-11-06,MCD,result,2026-11-04,3.38,3.57,5.62,6.53,,
