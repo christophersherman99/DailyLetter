@@ -4,13 +4,13 @@
  "sector": "Financial Services",
  "industry": "Banks - Diversified",
  "currency": "GBP",
- "price": 23.045,
+ "price": 23.2,
  "shares_out": 3321220864.0,
  "beta": 0.887,
  "ev_ebitda": null,
  "analyst_growth": [
-  0.0752,
-  0.0476
+  0.075,
+  0.047199998
  ],
  "years": {
   "2022": {
@@ -94,5 +94,5 @@
    "nwc_investment": 61000000.0
   }
  },
- "fetched": "2026-11-10"
+ "fetched": "2026-11-11"
 }

@@ -4,10 +4,10 @@
  "sector": "Consumer Cyclical",
  "industry": "Restaurants",
  "currency": "USD",
- "price": 282.46,
+ "price": 276.705,
  "shares_out": 705784744.0,
  "beta": 0.431,
- "ev_ebitda": 16.715,
+ "ev_ebitda": 16.75,
  "analyst_growth": [
   0.0369,
   0.0108
@@ -94,5 +94,5 @@
    "nwc_investment": -106000000.0
   }
  },
- "fetched": "2026-11-10"
+ "fetched": "2026-11-11"
 }
