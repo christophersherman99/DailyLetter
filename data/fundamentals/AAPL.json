@@ -4,13 +4,13 @@
  "sector": "Technology",
  "industry": "Consumer Electronics",
  "currency": "USD",
- "price": 357.71,
+ "price": 352.78,
  "shares_out": 14532182000.0,
  "beta": 1.089,
- "ev_ebitda": 30.294,
+ "ev_ebitda": 30.411,
  "analyst_growth": [
-  0.103599995,
-  0.08140001
+  0.103199996,
+  0.081
  ],
  "years": {
   "2022": {
@@ -114,5 +114,5 @@
    "nwc_investment": 14858000000.0
   }
  },
- "fetched": "2026-11-13"
+ "fetched": "2026-11-16"
 }
