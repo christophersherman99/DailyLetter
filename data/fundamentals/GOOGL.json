@@ -4,10 +4,10 @@
  "sector": "Communication Services",
  "industry": "Internet Content & Information",
  "currency": "USD",
- "price": 279.075,
+ "price": 272.82,
  "shares_out": 5888000000.0,
  "beta": 1.226,
- "ev_ebitda": 18.196,
+ "ev_ebitda": 17.547,
  "analyst_growth": [
   0.2403,
   0.2738
@@ -94,5 +94,5 @@
    "nwc_investment": -618000000.0
   }
  },
- "fetched": "2026-11-19"
+ "fetched": "2026-11-20"
 }
