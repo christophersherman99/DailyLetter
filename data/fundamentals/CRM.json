@@ -4,13 +4,13 @@
  "sector": "Technology",
  "industry": "Software - Application",
  "currency": "USD",
- "price": 185.46,
+ "price": 193.24,
  "shares_out": 823000000.0,
  "beta": 1.233,
- "ev_ebitda": 13.925,
+ "ev_ebitda": 14.234,
  "analyst_growth": [
   0.1149,
-  0.096099995
+  0.095699996
  ],
  "years": {
   "2023": {
@@ -94,5 +94,5 @@
    "nwc_investment": 781000000.0
   }
  },
- "fetched": "2026-11-23"
+ "fetched": "2026-11-24"
 }
