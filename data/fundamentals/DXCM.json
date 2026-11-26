@@ -4,10 +4,10 @@
  "sector": "Healthcare",
  "industry": "Medical Devices",
  "currency": "USD",
- "price": 84.76,
+ "price": 84.84,
  "shares_out": 372950922.0,
  "beta": 1.443,
- "ev_ebitda": 20.778,
+ "ev_ebitda": 20.827,
  "analyst_growth": [
   0.12149999,
   0.1042
@@ -94,5 +94,5 @@
    "nwc_investment": -103400000.0
   }
  },
- "fetched": "2026-11-25"
+ "fetched": "2026-11-26"
 }
